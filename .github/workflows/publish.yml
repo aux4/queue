@@ -1,0 +1,65 @@
+name: Publish Package
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**'
+      - '!.github/**'
+      - '!README.md'
+      - '!LICENSE'
+      - '!.gitignore'
+
+  workflow_dispatch:
+    inputs:
+      level:
+        description: 'Release level (patch, minor, major)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+concurrency:
+  group: publish-package
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o package/dist/darwin/amd64/aux4-queue .
+          GOOS=darwin GOARCH=arm64 go build -o package/dist/darwin/arm64/aux4-queue .
+          GOOS=linux GOARCH=amd64 go build -o package/dist/linux/amd64/aux4-queue .
+          GOOS=linux GOARCH=arm64 go build -o package/dist/linux/arm64/aux4-queue .
+          GOOS=linux GOARCH=386 go build -o package/dist/linux/386/aux4-queue .
+          GOOS=windows GOARCH=amd64 go build -o package/dist/windows/amd64/aux4-queue.exe .
+          GOOS=windows GOARCH=arm64 go build -o package/dist/windows/arm64/aux4-queue.exe .
+          GOOS=windows GOARCH=386 go build -o package/dist/windows/386/aux4-queue.exe .
+
+      - name: Publish package
+        uses: aux4/publish-package-action@v1
+        with:
+          working_directory: package
+          package_directory: .
+          level: ${{ inputs.level || 'patch' }}
+          aux4_token: ${{ secrets.AUX4_ACCESS_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}

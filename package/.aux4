@@ -1,0 +1,222 @@
+{
+  "scope": "aux4",
+  "name": "queue",
+  "version": "0.1.0-local-local",
+  "description": "in-memory message queue with pub/sub support",
+  "license": "Apache-2.0",
+  "tags": [
+    "aux4",
+    "queue",
+    "pubsub",
+    "messaging"
+  ],
+  "profiles": [
+    {
+      "name": "main",
+      "commands": [
+        {
+          "name": "queue",
+          "execute": [
+            "profile:queue"
+          ],
+          "help": {
+            "text": "in-memory message queue"
+          }
+        }
+      ]
+    },
+    {
+      "name": "queue",
+      "commands": [
+        {
+          "name": "start",
+          "execute": [
+            "${packageDir}/aux4-queue start values(port, token, queues)"
+          ],
+          "help": {
+            "text": "Start the queue server",
+            "variables": [
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "queues",
+                "text": "Pre-configured queues (JSON array)",
+                "default": ""
+              }
+            ]
+          }
+        },
+        {
+          "name": "stop",
+          "execute": [
+            "${packageDir}/aux4-queue stop values(port)"
+          ],
+          "help": {
+            "text": "Stop the queue server",
+            "variables": [
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              }
+            ]
+          }
+        },
+        {
+          "name": "create",
+          "execute": [
+            "${packageDir}/aux4-queue create values(port, token, name, ws, webhook, header*)"
+          ],
+          "help": {
+            "text": "Create a new queue",
+            "variables": [
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "ws",
+                "text": "WebSocket URL to proxy messages to",
+                "default": ""
+              },
+              {
+                "name": "webhook",
+                "text": "Webhook URL to proxy messages to",
+                "default": ""
+              },
+              {
+                "name": "header",
+                "text": "HTTP header for WS/webhook (format: Key: Value)",
+                "default": "",
+                "multiple": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "delete",
+          "execute": [
+            "${packageDir}/aux4-queue delete values(port, token, name)"
+          ],
+          "help": {
+            "text": "Delete a queue",
+            "variables": [
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              }
+            ]
+          }
+        },
+        {
+          "name": "list",
+          "execute": [
+            "${packageDir}/aux4-queue list values(port, token)"
+          ],
+          "help": {
+            "text": "List all queues",
+            "variables": [
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              }
+            ]
+          }
+        },
+        {
+          "name": "send",
+          "execute": [
+            "stdin:${packageDir}/aux4-queue send values(port, token, name)"
+          ],
+          "help": {
+            "text": "Send messages to a queue from stdin",
+            "variables": [
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              }
+            ]
+          }
+        },
+        {
+          "name": "receive",
+          "execute": [
+            "${packageDir}/aux4-queue receive values(port, token, name, limit)"
+          ],
+          "help": {
+            "text": "Receive messages from a queue",
+            "variables": [
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "limit",
+                "text": "Max messages to receive (-1 for unlimited)",
+                "default": "-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
