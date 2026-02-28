@@ -2,7 +2,6 @@ package/dist/
 package/aux4-queue
 aux4-queue
 
-go.sum
 
 .DS_Store
 queue
