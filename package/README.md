@@ -2,10 +2,10 @@
 
 In-memory message queue with pub/sub support for aux4.
 
-## Install
+## Installation
 
 ```bash
-aux4 install aux4/queue
+aux4 aux4 pkger install aux4/queue
 ```
 
 ## Usage
