@@ -138,18 +138,6 @@ jobs:
           if [ -z "$TOK" ]; then echo "::error::client_credentials mint returned no access_token from dev SSO"; exit 1; fi
           echo "::add-mask::$TOK"; echo "token=$TOK" >> "$GITHUB_OUTPUT"
 
-      - name: Debug -- raw hub publish-request response
-        if: github.ref_name == 'dev'
-        run: |
-          CUR=$(jq -r '.version' package/.aux4)
-          IFS='.' read -r MA MI PA <<< "$CUR"
-          NEXT="${MA}.${MI}.$((PA + 1))"
-          echo "probing version ${NEXT}"
-          curl -sS -w '\nHTTP_STATUS:%{http_code}\n' -X POST \
-            -H "Authorization: Bearer ${{ steps.devmint.outputs.token }}" \
-            -H "Content-Type: application/json" \
-            "https://dev.api.hub.aux4.io/v1/packages/public/aux4/queue/${NEXT}" || true
-
       - name: Publish
         uses: aux4/action@v1
         with:
