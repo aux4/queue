@@ -46,20 +46,18 @@ jobs:
       # --storage repository tests shell out to 'aux4 repository ...'; install
       # the dependency from the dev hub (where aux4/repository's lease command
       # currently lives) before running the suite. A plain 'curl aux4.sh'
-      # install has no pkger command, so use the aux4/aux4 Docker image (same
-      # as aux4/repository's own dev-publish job) to run the install, writing
-      # into the runner's real $HOME/.aux4.config so the native "Test" step
-      # below (test-package-action, running outside Docker) can see it.
+      # install has no pkger command, and installing it (or a package) only by
+      # copying files is not enough -- the engine resolves commands through a
+      # merged ~/.aux4.config/global.aux4 that only 'pkger install' itself
+      # regenerates -- so bootstrap the real pkger.aux4.sh installer (same as
+      # the darwin job below) and run a genuine native install.
       - name: Install aux4/repository (dev hub)
         run: |
-          mkdir -p "$HOME/.aux4.config"
-          docker run --rm \
-            --user $(id -u):$(id -g) \
-            -v "$HOME/.aux4.config:/root/.aux4.config" \
-            -e HOME=/root \
-            -e AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages \
-            aux4/aux4:latest \
-            aux4 aux4 pkger install aux4/repository
+          curl -fsSL https://aux4.sh | sh
+          echo "$HOME/.aux4.config/packages/aux4/aux4" >> $GITHUB_PATH
+          export PATH="$HOME/.aux4.config/packages/aux4/aux4:$PATH"
+          curl -fsSL https://pkger.aux4.sh | sh
+          AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages aux4 aux4 pkger install aux4/repository
 
       - name: Test
         uses: aux4/test-package-action@v1
