@@ -43,6 +43,17 @@ jobs:
         with:
           go-version: '1.23'
 
+      # --storage repository tests shell out to 'aux4 repository ...'; install
+      # the dependency from the dev hub (where aux4/repository's lease command
+      # currently lives) before running the suite. test-package-action does its
+      # own aux4 install but reuses the same $HOME/.aux4.config, so a package
+      # installed here is still present when it runs the tests.
+      - name: Install aux4/repository (dev hub)
+        run: |
+          curl -fsSL https://aux4.sh | sh
+          echo "$HOME/.aux4.config/packages/aux4/aux4" >> $GITHUB_PATH
+          AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages "$HOME/.aux4.config/packages/aux4/aux4/aux4" aux4 pkger install aux4/repository
+
       - name: Test
         uses: aux4/test-package-action@v1
         with:
@@ -58,6 +69,12 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.23'
+
+      - name: Install aux4/repository (dev hub)
+        run: |
+          curl -fsSL https://aux4.sh | sh
+          echo "$HOME/.aux4.config/packages/aux4/aux4" >> $GITHUB_PATH
+          AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages "$HOME/.aux4.config/packages/aux4/aux4/aux4" aux4 pkger install aux4/repository
 
       - name: Test
         uses: aux4/test-package-action@v1
