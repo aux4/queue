@@ -37,6 +37,11 @@ concurrency:
 permissions:
   contents: write
 
+# pkger (used internally by aux4/action's install/test/publish steps) resolves
+# package dependencies against this registry; empty = pkger's prod default.
+env:
+  AUX4_REGISTRY_URL: ${{ github.ref_name == 'dev' && 'https://dev.api.hub.aux4.io/v1/packages' || '' }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -58,19 +63,6 @@ jobs:
         with:
           go-version: '1.23'
 
-      # --storage repository tests shell out to 'aux4 repository ...'; install
-      # the dependency from the dev hub (where aux4/repository's lease and
-      # patch --increment primitives live) before running the suite. A plain
-      # 'curl aux4.sh' install has no pkger command, so bootstrap the real
-      # pkger.aux4.sh installer and run a genuine native install.
-      - name: Install aux4/repository (dev hub)
-        run: |
-          curl -fsSL https://aux4.sh | sh
-          echo "$HOME/.aux4.config/packages/aux4/aux4" >> $GITHUB_PATH
-          export PATH="$HOME/.aux4.config/packages/aux4/aux4:$PATH"
-          curl -fsSL https://pkger.aux4.sh | sh
-          AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages aux4 aux4 pkger install aux4/repository
-
       - uses: aux4/action@v1
         with:
           command: test
@@ -85,14 +77,6 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: '1.23'
-
-      - name: Install aux4/repository (dev hub)
-        run: |
-          curl -fsSL https://aux4.sh | sh
-          echo "$HOME/.aux4.config/packages/aux4/aux4" >> $GITHUB_PATH
-          export PATH="$HOME/.aux4.config/packages/aux4/aux4:$PATH"
-          curl -fsSL https://pkger.aux4.sh | sh
-          AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages aux4 aux4 pkger install aux4/repository
 
       - uses: aux4/action@v1
         with:
