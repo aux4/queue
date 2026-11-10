@@ -45,14 +45,21 @@ jobs:
 
       # --storage repository tests shell out to 'aux4 repository ...'; install
       # the dependency from the dev hub (where aux4/repository's lease command
-      # currently lives) before running the suite. test-package-action does its
-      # own aux4 install but reuses the same $HOME/.aux4.config, so a package
-      # installed here is still present when it runs the tests.
+      # currently lives) before running the suite. A plain 'curl aux4.sh'
+      # install has no pkger command, so use the aux4/aux4 Docker image (same
+      # as aux4/repository's own dev-publish job) to run the install, writing
+      # into the runner's real $HOME/.aux4.config so the native "Test" step
+      # below (test-package-action, running outside Docker) can see it.
       - name: Install aux4/repository (dev hub)
         run: |
-          curl -fsSL https://aux4.sh | sh
-          echo "$HOME/.aux4.config/packages/aux4/aux4" >> $GITHUB_PATH
-          AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages "$HOME/.aux4.config/packages/aux4/aux4/aux4" aux4 pkger install aux4/repository
+          mkdir -p "$HOME/.aux4.config"
+          docker run --rm \
+            --user $(id -u):$(id -g) \
+            -v "$HOME/.aux4.config:/root/.aux4.config" \
+            -e HOME=/root \
+            -e AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages \
+            aux4/aux4:latest \
+            aux4 aux4 pkger install aux4/repository
 
       - name: Test
         uses: aux4/test-package-action@v1
@@ -70,11 +77,17 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Install aux4/repository (dev hub)
+      # macOS runners have no Docker; fall back to AUX4_REGISTRY_URL against
+      # the plain 'curl aux4.sh' install's own pkger-less engine is not
+      # possible here, so install aux4/pkger directly via the hub the same way
+      # the bootstrap installer itself would, then install the dependency.
+      - name: Install aux4/pkger and aux4/repository (dev hub)
         run: |
           curl -fsSL https://aux4.sh | sh
           echo "$HOME/.aux4.config/packages/aux4/aux4" >> $GITHUB_PATH
-          AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages "$HOME/.aux4.config/packages/aux4/aux4/aux4" aux4 pkger install aux4/repository
+          export PATH="$HOME/.aux4.config/packages/aux4/aux4:$PATH"
+          curl -fsSL https://pkger.aux4.sh | sh
+          AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages aux4 aux4 pkger install aux4/repository
 
       - name: Test
         uses: aux4/test-package-action@v1
