@@ -112,28 +112,23 @@ exit=4
 
 ### group serialization: only one message per group is leased at a time
 
-Repository timestamps are second-granularity, so the two chatA messages may tie on createdAt --
-either can legitimately win the FIFO tiebreak. What must hold is group exclusivity: only one of the
-two chatA messages is ever leased while the other is still outstanding, and the unrelated chatB
-message leases independently.
+Repository timestamps are second-granularity, so all three messages may tie on createdAt -- which
+group is leased first is not guaranteed. What must hold regardless of ordering: both groups are
+represented across the two leases (one each), never the same group twice (that would mean a second
+chatA message was leased while the first was still outstanding).
 
 ````execute
 echo '{"n":1}' | aux4 queue send --storage repository --db .queue.db --name wq --group chatA >/dev/null
 echo '{"n":2}' | aux4 queue send --storage repository --db .queue.db --name wq --group chatA >/dev/null
 echo '{"n":3}' | aux4 queue send --storage repository --db .queue.db --name wq --group chatB >/dev/null
-FIRST=$(aux4 queue lease --storage repository --db .queue.db --name wq --visibility 300)
-SECOND=$(aux4 queue lease --storage repository --db .queue.db --name wq --visibility 300)
-echo "$FIRST" | jq '[.[] | .group]'
-echo "$SECOND" | jq '[.[] | .group]'
+FIRST=$(aux4 queue lease --storage repository --db .queue.db --name wq --visibility 300 | jq -r '.[0].group')
+SECOND=$(aux4 queue lease --storage repository --db .queue.db --name wq --visibility 300 | jq -r '.[0].group')
+RESULT=$(printf '%s\n%s\n' "$FIRST" "$SECOND" | sort | tr '\n' ' ')
+echo "${RESULT% }"
 ````
 
 ````expect
-[
-  "chatA"
-]
-[
-  "chatB"
-]
+chatA chatB
 ````
 
 ### durability: a message sent before stays leasable after a simulated restart
