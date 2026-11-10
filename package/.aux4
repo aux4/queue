@@ -821,7 +821,7 @@
         {
           "name": "ack",
           "execute": [
-            "aux4 repository delete value(name)_messages --db value(db) value(id)"
+            "aux4 repository delete value(name)_messages --db value(db) --id value(id)"
           ],
           "private": true,
           "help": {
