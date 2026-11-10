@@ -188,3 +188,27 @@ echo "exit=$?"
 []
 exit=4
 ````
+
+### a queue name containing shell metacharacters never executes a shell command
+
+Every variable is forwarded via `value()`/`param()`, never interpolated raw into a shell string, so a
+malicious `--name` can only ever end up as literal (harmless) argument text or a rejected/invalid
+identifier -- it can never break out into a second shell command.
+
+````beforeEach
+rm -f /tmp/queue-injection-marker
+````
+
+````afterEach
+rm -f /tmp/queue-injection-marker
+````
+
+````execute
+aux4 queue create --storage repository --db .queue.db --name 'inj;touch /tmp/queue-injection-marker' --maxAttempts 1 >/dev/null 2>&1
+echo '{"x":1}' | aux4 queue send --storage repository --db .queue.db --name 'inj;touch /tmp/queue-injection-marker' >/dev/null 2>&1
+test -f /tmp/queue-injection-marker && echo INJECTED || echo safe
+````
+
+````expect
+safe
+````

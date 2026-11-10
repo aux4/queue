@@ -1,5 +1,11 @@
 name: Publish Package
 
+# main -> prod hub (token minted from AUX4_PUBLISHER_* client credentials against
+#         prod SSO; default registry)
+# dev  -> dev hub  (token minted from AUX4_DEV_PUBLISHER_* client credentials
+#         against dev SSO, since the dev hub validates against dev SSO; registry
+#         pointed at the dev hub). Both paths call aux4/action@v1 command:publish;
+#         only the token + registry differ.
 on:
   push:
     branches:
@@ -32,25 +38,31 @@ permissions:
   contents: write
 
 jobs:
-  test-linux:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: aux4/action@v1
+        with:
+          command: lint
+          strict: 'true'
+
+  test-linux:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.23'
 
       # --storage repository tests shell out to 'aux4 repository ...'; install
-      # the dependency from the dev hub (where aux4/repository's lease command
-      # currently lives) before running the suite. A plain 'curl aux4.sh'
-      # install has no pkger command, and installing it (or a package) only by
-      # copying files is not enough -- the engine resolves commands through a
-      # merged ~/.aux4.config/global.aux4 that only 'pkger install' itself
-      # regenerates -- so bootstrap the real pkger.aux4.sh installer (same as
-      # the darwin job below) and run a genuine native install.
+      # the dependency from the dev hub (where aux4/repository's lease and
+      # patch --increment primitives live) before running the suite. A plain
+      # 'curl aux4.sh' install has no pkger command, so bootstrap the real
+      # pkger.aux4.sh installer and run a genuine native install.
       - name: Install aux4/repository (dev hub)
         run: |
           curl -fsSL https://aux4.sh | sh
@@ -59,27 +71,22 @@ jobs:
           curl -fsSL https://pkger.aux4.sh | sh
           AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages aux4 aux4 pkger install aux4/repository
 
-      - name: Test
-        uses: aux4/test-package-action@v1
+      - uses: aux4/action@v1
         with:
+          command: test
           build_command: aux4 builder linux
 
   test-darwin:
+    needs: [lint]
     runs-on: macos-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.23'
 
-      # macOS runners have no Docker; fall back to AUX4_REGISTRY_URL against
-      # the plain 'curl aux4.sh' install's own pkger-less engine is not
-      # possible here, so install aux4/pkger directly via the hub the same way
-      # the bootstrap installer itself would, then install the dependency.
-      - name: Install aux4/pkger and aux4/repository (dev hub)
+      - name: Install aux4/repository (dev hub)
         run: |
           curl -fsSL https://aux4.sh | sh
           echo "$HOME/.aux4.config/packages/aux4/aux4" >> $GITHUB_PATH
@@ -87,41 +94,26 @@ jobs:
           curl -fsSL https://pkger.aux4.sh | sh
           AUX4_REGISTRY_URL=https://dev.api.hub.aux4.io/v1/packages aux4 aux4 pkger install aux4/repository
 
-      - name: Test
-        uses: aux4/test-package-action@v1
+      - uses: aux4/action@v1
         with:
+          command: test
           build_command: aux4 builder darwin
 
-  # main -> prod hub, via aux4/publish-package-action@v1 (version bump + git
-  # tag + GitHub release + publish). Unchanged behavior.
   publish:
     needs: [test-linux, test-darwin]
-    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.23'
 
-      - name: Build
-        run: |
-          GOOS=darwin GOARCH=amd64 go build -o package/dist/darwin/amd64/aux4-queue .
-          GOOS=darwin GOARCH=arm64 go build -o package/dist/darwin/arm64/aux4-queue .
-          GOOS=linux GOARCH=amd64 go build -o package/dist/linux/amd64/aux4-queue .
-          GOOS=linux GOARCH=arm64 go build -o package/dist/linux/arm64/aux4-queue .
-          GOOS=linux GOARCH=386 go build -o package/dist/linux/386/aux4-queue .
-          GOOS=windows GOARCH=amd64 go build -o package/dist/windows/amd64/aux4-queue.exe .
-          GOOS=windows GOARCH=arm64 go build -o package/dist/windows/arm64/aux4-queue.exe .
-          GOOS=windows GOARCH=386 go build -o package/dist/windows/386/aux4-queue.exe .
-
-      - name: Mint hub publish token
+      - name: Mint prod hub publish token
         id: mint
+        if: github.ref_name == 'main'
         env:
           CLIENT_ID: ${{ secrets.AUX4_PUBLISHER_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.AUX4_PUBLISHER_CLIENT_SECRET }}
@@ -131,108 +123,12 @@ jobs:
           if [ -z "$TOK" ]; then echo "::error::client_credentials mint returned no access_token"; exit 1; fi
           echo "::add-mask::$TOK"; echo "token=$TOK" >> "$GITHUB_OUTPUT"
 
-      - name: Publish package
-        uses: aux4/publish-package-action@v1
-        with:
-          working_directory: package
-          package_directory: .
-          level: ${{ inputs.level || 'patch' }}
-          aux4_token: ${{ steps.mint.outputs.token }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  # dev -> dev hub. aux4/publish-package-action@v1 has no registry override and
-  # always tags + cuts a GitHub release, which is wrong for a dev-channel push,
-  # so dev publishes directly with aux4-pkger + AUX4_REGISTRY_URL (same pattern
-  # as aux4/repository's dev publish job): version bump commit only, no tag, no
-  # release.
-  publish-dev:
-    needs: [test-linux, test-darwin]
-    if: github.ref_name == 'dev'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.23'
-
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Build
-        run: |
-          GOOS=darwin GOARCH=amd64 go build -o package/dist/darwin/amd64/aux4-queue .
-          GOOS=darwin GOARCH=arm64 go build -o package/dist/darwin/arm64/aux4-queue .
-          GOOS=linux GOARCH=amd64 go build -o package/dist/linux/amd64/aux4-queue .
-          GOOS=linux GOARCH=arm64 go build -o package/dist/linux/arm64/aux4-queue .
-          GOOS=linux GOARCH=386 go build -o package/dist/linux/386/aux4-queue .
-          GOOS=windows GOARCH=amd64 go build -o package/dist/windows/amd64/aux4-queue.exe .
-          GOOS=windows GOARCH=arm64 go build -o package/dist/windows/arm64/aux4-queue.exe .
-          GOOS=windows GOARCH=386 go build -o package/dist/windows/386/aux4-queue.exe .
-
-      - name: Get current package info
-        id: current
-        run: |
-          SCOPE=$(jq -r '.scope' package/.aux4)
-          NAME=$(jq -r '.name' package/.aux4)
-          CURRENT_VERSION=$(jq -r '.version' package/.aux4)
-          echo "scope=${SCOPE}" >> $GITHUB_OUTPUT
-          echo "name=${NAME}" >> $GITHUB_OUTPUT
-          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Increment version
-        id: version
-        run: |
-          CURRENT_VERSION="${{ steps.current.outputs.current_version }}"
-          LEVEL="${{ inputs.level || 'patch' }}"
-
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-
-          case "$LEVEL" in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-          esac
-
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
-
-          jq --arg v "$NEW_VERSION" '.version = $v' package/.aux4 > package/.aux4.tmp && mv package/.aux4.tmp package/.aux4
-
-      # Plain `curl aux4.sh` only installs the bare engine + aux4/aux4 base
-      # commands, not the aux4/pkger package (no bootstrap install path for it
-      # standalone), so package/publish uses the aux4/aux4 Docker image, which
-      # bundles pkger -- the same approach aux4/publish-package-action@v1 uses
-      # internally on main.
-      - name: Pull latest aux4 image
-        run: docker pull aux4/aux4:latest
-
-      - name: Build package
-        run: |
-          docker run --rm \
-            --user $(id -u):$(id -g) \
-            -v $(pwd):/workspace \
-            -w /workspace/package \
-            aux4/aux4:latest \
-            aux4 pkger build .
-
+      # The dev hub is validated by dev SSO, so a prod token is rejected there.
+      # Mint a short-lived dev publish token from the dev publisher client
+      # credentials. Only runs on the dev branch.
       - name: Mint dev hub publish token
         id: devmint
+        if: github.ref_name == 'dev'
         env:
           CLIENT_ID: ${{ secrets.AUX4_DEV_PUBLISHER_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.AUX4_DEV_PUBLISHER_CLIENT_SECRET }}
@@ -242,27 +138,14 @@ jobs:
           if [ -z "$TOK" ]; then echo "::error::client_credentials mint returned no access_token from dev SSO"; exit 1; fi
           echo "::add-mask::$TOK"; echo "token=$TOK" >> "$GITHUB_OUTPUT"
 
-      - name: Publish to dev hub
-        env:
-          AUX4_ACCESS_TOKEN: ${{ steps.devmint.outputs.token }}
-        run: |
-          SCOPE="${{ steps.current.outputs.scope }}"
-          NAME="${{ steps.current.outputs.name }}"
-          VERSION="${{ steps.version.outputs.version }}"
-          PACKAGE_FILE="${SCOPE}_${NAME}_${VERSION}.zip"
-          AUX4_ACCESS_TOKEN=$(echo -n "$AUX4_ACCESS_TOKEN" | tr -d '[:space:]')
-          docker run --rm \
-            --user $(id -u):$(id -g) \
-            -v $(pwd):/workspace \
-            -w /workspace/package \
-            -e AUX4_ACCESS_TOKEN="${AUX4_ACCESS_TOKEN}" \
-            -e AUX4_REGISTRY_URL="https://dev.api.hub.aux4.io/v1/packages" \
-            --entrypoint sh \
-            aux4/aux4:latest \
-            -c "aux4 aux4 pkger publish \"${PACKAGE_FILE}\""
-
-      - name: Commit the dev version
-        run: |
-          git add package/.aux4
-          git commit -m "release: ${{ steps.version.outputs.version }} (dev hub) [skip ci]"
-          git push origin dev
+      - name: Publish
+        uses: aux4/action@v1
+        with:
+          command: publish
+          level: ${{ inputs.level || 'patch' }}
+          build_command: aux4 builder all
+          # dev -> minted dev token; main -> minted prod token
+          aux4_token: ${{ github.ref_name == 'dev' && steps.devmint.outputs.token || steps.mint.outputs.token }}
+          # dev -> dev hub registry; main -> default (prod) hub
+          registry: ${{ github.ref_name == 'dev' && 'https://dev.api.hub.aux4.io/v1/packages' || '' }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}

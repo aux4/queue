@@ -5,9 +5,11 @@ its attempts counter. Once attempts reaches the queue's `--maxAttempts` (set at 
 time), the message stops being eligible for `lease` and instead shows up in `aux4 queue dlq` — there
 is no separate dead-letter table or move step, "dead-lettered" is simply `attempts >= maxAttempts`.
 
-In repository storage, `--attempts` and `--maxAttempts` must be supplied by the caller (they are the
-values returned by the preceding `lease` call, and the queue's configured `--maxAttempts`
-respectively) — repository storage has no running process to look this up on the caller's behalf.
+In repository storage, `--maxAttempts` must be supplied by the caller (the queue's configured
+`--maxAttempts`) — repository storage has no running process to look this up on the caller's
+behalf. The attempts counter itself is bumped server-side (`aux4 repository patch --increment`),
+so `--attempts` is accepted for backward compatibility but ignored — you no longer need to pass the
+value returned by `lease`.
 
 #### Usage
 
@@ -21,7 +23,7 @@ aux4 queue nack --storage repository --db <path> --name <queue-name> --id <id> -
 --name          Queue name
 --leaseId       The `leaseId` returned by `queue lease` (memory storage only)
 --id            The message `id` returned by `queue lease` (repository storage only)
---attempts      The message's current attempts count, as returned by `queue lease` (repository storage only)
+--attempts      Deprecated, ignored (repository storage only); attempts is now bumped server-side
 --maxAttempts   The queue's `--maxAttempts` (repository storage only; 0 means unlimited)
 
 #### Example

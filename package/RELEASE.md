@@ -1,3 +1,20 @@
+# aux4/queue 0.2.2
+
+## Changed
+
+- Rewrote `--storage repository` as pure aux4 DSL composition: every command now validates
+  `--storage` and dispatches with a dynamic subcommand (`aux4 queue value(storage) <cmd>`) to an
+  internal `queue:memory` or `queue:repository` profile, instead of inline shell (`if`/`then`/`fi`,
+  `$(cat)`, `$((...))`). All user-controlled values (`name`, `id`, `db`, `group`, ...) are passed
+  through `value()`/`param()`, never interpolated raw into a shell string, so a queue/message name
+  containing shell metacharacters can no longer execute a second command — the worst case is a
+  rejected/invalid identifier. `nack`'s attempts counter is now bumped server-side via
+  `aux4/repository`'s new `patch --increment` (no more shell `$((attempts + 1))`); `--attempts` is
+  still accepted for backward compatibility but ignored. No behavior change for `--storage memory`
+  (unchanged Go binary calls) or for the `--storage repository` public CLI surface. `aux4 lint run
+  --strict true` is clean (no `unsafe-*-interpolation`). 1 new test (shell-metacharacter safety); all
+  35 previously-shipped tests pass unmodified.
+
 # aux4/queue 0.2.0
 
 ## Added

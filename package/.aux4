@@ -32,9 +32,29 @@
       "name": "queue",
       "commands": [
         {
+          "name": "memory",
+          "execute": [
+            "profile:queue:memory"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage dispatch target (internal)"
+          }
+        },
+        {
+          "name": "repository",
+          "execute": [
+            "profile:queue:repository"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage dispatch target (internal)"
+          }
+        },
+        {
           "name": "start",
           "execute": [
-            "if [ \"${storage}\" = \"repository\" ]; then echo \"repository storage ready (db=${db}); no server process needed\"; else ${packageDir}/aux4-queue start values(port, token, queues); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) start param(port) param(token) param(queues) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "Start the queue server (memory storage) or validate repository storage is reachable (no server process)",
@@ -74,7 +94,7 @@
         {
           "name": "stop",
           "execute": [
-            "if [ \"${storage}\" = \"repository\" ]; then echo \"repository storage: nothing to stop\"; else ${packageDir}/aux4-queue stop values(port); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) stop param(port); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "Stop the queue server (memory storage only; a no-op for repository storage)",
@@ -99,8 +119,7 @@
         {
           "name": "create",
           "execute": [
-            "set:createData={\"workQueue\":${workQueue},\"maxAttempts\":${maxAttempts}}",
-            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository write _queues --db \"${db}\" --id \"${name}\" --data value(createData); else ${packageDir}/aux4-queue create values(port, token, name, ws, webhook, header*, workQueue, maxAttempts); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) create param(port) param(token) param(name) param(ws) param(webhook) param(header**) param(workQueue) param(maxAttempts) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "Create a new queue. In repository storage, every queue is implicitly a durable work queue (there is no pub/sub concept without a server process)",
@@ -166,7 +185,7 @@
         {
           "name": "delete",
           "execute": [
-            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository drop ${name}_messages --db \"${db}\" --yes true && aux4 repository delete _queues --db \"${db}\" --id \"${name}\"; else ${packageDir}/aux4-queue delete values(port, token, name); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) delete param(port) param(token) param(name) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "Delete a queue",
@@ -206,7 +225,7 @@
         {
           "name": "list",
           "execute": [
-            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository find _queues --db \"${db}\" --expr \"1=1\"; else ${packageDir}/aux4-queue list values(port, token); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) list param(port) param(token) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "List all queues",
@@ -241,7 +260,7 @@
         {
           "name": "send",
           "execute": [
-            "stdin:if [ \"${storage}\" = \"repository\" ]; then BODY=$(cat) && aux4 repository write ${name}_messages --db \"${db}\" --data \"{\\\"body\\\":$BODY,\\\"group\\\":\\\"${group}\\\",\\\"attempts\\\":0}\"; else ${packageDir}/aux4-queue send values(port, token, name, group, id); fi"
+            "stdin:if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) send param(port) param(token) param(name) param(group) param(id) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "Send messages to a queue from stdin",
@@ -322,7 +341,7 @@
         {
           "name": "lease",
           "execute": [
-            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository lease ${name}_messages --db \"${db}\" --expr \"${maxAttempts} <= 0 or attempts < ${maxAttempts}\" --group group --ttl \"${visibility}\" --owner \"${owner}\" --raw false; else ${packageDir}/aux4-queue lease values(port, token, name, visibility); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) lease param(port) param(token) param(name) param(visibility) param(owner) param(maxAttempts) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "Lease the next eligible message from a work queue (visibility-timeout based; one message per group at a time when the message has a group)",
@@ -377,7 +396,7 @@
         {
           "name": "ack",
           "execute": [
-            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository delete ${name}_messages --db \"${db}\" --id \"${id}\"; else ${packageDir}/aux4-queue ack values(port, token, name, leaseId); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) ack param(port) param(token) param(name) param(leaseId) param(id) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "Acknowledge (complete) a leased message, removing it from the queue",
@@ -427,9 +446,7 @@
         {
           "name": "nack",
           "execute": [
-            "set:newAttempts=!echo $((${attempts} + 1))",
-            "set:nackData={\"attempts\":${newAttempts},\"leaseExpiresAt\":0}",
-            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository patch ${name}_messages --db \"${db}\" --id \"${id}\" --data value(nackData); else ${packageDir}/aux4-queue nack values(port, token, name, leaseId); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) nack param(port) param(token) param(name) param(leaseId) param(id) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "Release a leased message for immediate redelivery, incrementing its attempts; the message becomes a dead-letter (visible via 'queue dlq', no longer leasable) once maxAttempts is reached",
@@ -475,7 +492,7 @@
               },
               {
                 "name": "attempts",
-                "text": "The message's current attempts count, as returned by 'queue lease' (repository storage only)",
+                "text": "Deprecated, ignored (repository storage only). The attempts counter is now bumped server-side via aux4/repository's 'patch --increment'; kept for backward compatibility with existing scripts",
                 "default": "0"
               },
               {
@@ -489,7 +506,7 @@
         {
           "name": "dlq",
           "execute": [
-            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository find ${name}_messages --db \"${db}\" --expr \"${maxAttempts} > 0 and attempts >= ${maxAttempts}\"; else ${packageDir}/aux4-queue dlq values(port, token, name); fi"
+            "if [ value(storage) = \"memory\" ] || [ value(storage) = \"repository\" ]; then aux4 queue value(storage) dlq param(port) param(token) param(name) param(maxAttempts) param(db); else echo \"Error: --storage must be 'memory' or 'repository'\" >&2 && exit 1; fi"
           ],
           "help": {
             "text": "List the dead-letter messages for a work queue",
@@ -528,6 +545,322 @@
                 "text": "The queue's maxAttempts, as set on 'queue create' (repository storage only; 0 means unlimited)",
                 "default": "0"
               }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "queue:memory",
+      "commands": [
+        {
+          "name": "start",
+          "execute": [
+            "${packageDir}/aux4-queue start values(port, token, queues)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: start the server",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" },
+              { "name": "queues", "text": "Pre-configured queues (JSON array)", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "stop",
+          "execute": [
+            "${packageDir}/aux4-queue stop values(port)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: stop the server",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" }
+            ]
+          }
+        },
+        {
+          "name": "create",
+          "execute": [
+            "${packageDir}/aux4-queue create values(port, token, name, ws, webhook, header*, workQueue, maxAttempts)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: create a queue",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "ws", "text": "WebSocket URL to proxy messages to", "default": "" },
+              { "name": "webhook", "text": "Webhook URL to proxy messages to", "default": "" },
+              { "name": "header", "text": "HTTP header for WS/webhook", "default": "", "multiple": true },
+              { "name": "workQueue", "text": "Opt this queue into work-queue semantics", "default": "false" },
+              { "name": "maxAttempts", "text": "Maximum delivery attempts before dead-lettering", "default": "0" }
+            ]
+          }
+        },
+        {
+          "name": "delete",
+          "execute": [
+            "${packageDir}/aux4-queue delete values(port, token, name)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: delete a queue",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" },
+              { "name": "name", "text": "Queue name", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "list",
+          "execute": [
+            "${packageDir}/aux4-queue list values(port, token)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: list queues",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "send",
+          "execute": [
+            "stdin:${packageDir}/aux4-queue send values(port, token, name, group, id)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: send a message",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "group", "text": "Group key for one-at-a-time delivery", "default": "" },
+              { "name": "id", "text": "Message id", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "lease",
+          "execute": [
+            "${packageDir}/aux4-queue lease values(port, token, name, visibility)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: lease a message",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "visibility", "text": "Visibility timeout in seconds", "default": "30" }
+            ]
+          }
+        },
+        {
+          "name": "ack",
+          "execute": [
+            "${packageDir}/aux4-queue ack values(port, token, name, leaseId)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: ack a message",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "leaseId", "text": "The leaseId returned by 'queue lease'", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "nack",
+          "execute": [
+            "${packageDir}/aux4-queue nack values(port, token, name, leaseId)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: nack a message",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "leaseId", "text": "The leaseId returned by 'queue lease'", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "dlq",
+          "execute": [
+            "${packageDir}/aux4-queue dlq values(port, token, name)"
+          ],
+          "private": true,
+          "help": {
+            "text": "memory storage: list dead letters",
+            "variables": [
+              { "name": "port", "text": "Server port", "default": "8420" },
+              { "name": "token", "text": "Authentication token", "default": "" },
+              { "name": "name", "text": "Queue name", "default": "" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "queue:repository",
+      "commands": [
+        {
+          "name": "start",
+          "execute": [
+            "log:repository storage ready (db=${db}); no server process needed"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: validate readiness (no server process)",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" }
+            ]
+          }
+        },
+        {
+          "name": "stop",
+          "execute": [
+            "log:repository storage: nothing to stop"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: no-op"
+          }
+        },
+        {
+          "name": "create",
+          "execute": [
+            "set:createData={\"workQueue\":${workQueue},\"maxAttempts\":${maxAttempts}}",
+            "aux4 repository write _queues --db value(db) --id value(name) --data value(createData)"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: create a queue record",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "workQueue", "text": "Opt this queue into work-queue semantics", "default": "false" },
+              { "name": "maxAttempts", "text": "Maximum delivery attempts before dead-lettering", "default": "0" }
+            ]
+          }
+        },
+        {
+          "name": "delete",
+          "execute": [
+            "aux4 repository drop value(name)_messages --db value(db) --yes true",
+            "aux4 repository delete _queues --db value(db) --id value(name)"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: delete a queue's messages table and its record",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
+              { "name": "name", "text": "Queue name", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "list",
+          "execute": [
+            "aux4 repository find _queues --db value(db) --expr \"1=1\""
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: list queue records",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" }
+            ]
+          }
+        },
+        {
+          "name": "send",
+          "execute": [
+            "nout:stdin:cat",
+            "set:queueData={\"body\":${response},\"group\":\"${group}\",\"attempts\":0}",
+            "aux4 repository write value(name)_messages --db value(db) --data value(queueData)"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: write a message record, wrapping the stdin payload as its body",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "group", "text": "Group key for one-at-a-time delivery", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "lease",
+          "execute": [
+            "set:leaseExpr=${maxAttempts} <= 0 or attempts < ${maxAttempts}",
+            "aux4 repository lease value(name)_messages --db value(db) --expr value(leaseExpr) --group group --ttl value(visibility) --owner value(owner) --raw false"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: lease the next eligible message",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "visibility", "text": "Visibility timeout in seconds", "default": "30" },
+              { "name": "owner", "text": "Opaque identifier of the leasing caller", "default": "" },
+              { "name": "maxAttempts", "text": "Exclude messages that already reached this many attempts", "default": "0" }
+            ]
+          }
+        },
+        {
+          "name": "ack",
+          "execute": [
+            "aux4 repository delete value(name)_messages --db value(db) value(id)"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: delete a completed message",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "id", "text": "The message id returned by 'queue lease'", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "nack",
+          "execute": [
+            "aux4 repository patch value(name)_messages --db value(db) --id value(id) --data '{\"leaseExpiresAt\":0}' --increment attempts"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: release a leased message and bump attempts (server-side increment, no shell arithmetic)",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "id", "text": "The message id returned by 'queue lease'", "default": "" }
+            ]
+          }
+        },
+        {
+          "name": "dlq",
+          "execute": [
+            "set:dlqExpr=${maxAttempts} > 0 and attempts >= ${maxAttempts}",
+            "aux4 repository find value(name)_messages --db value(db) --expr value(dlqExpr)"
+          ],
+          "private": true,
+          "help": {
+            "text": "repository storage: list dead-letter messages",
+            "variables": [
+              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
+              { "name": "name", "text": "Queue name", "default": "" },
+              { "name": "maxAttempts", "text": "The queue's maxAttempts", "default": "0" }
             ]
           }
         }
