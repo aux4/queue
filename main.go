@@ -29,6 +29,14 @@ func main() {
 		sendMessages(args)
 	case "receive":
 		receiveMessages(args)
+	case "lease":
+		leaseMessage(args)
+	case "ack":
+		ackMessage(args)
+	case "nack":
+		nackMessage(args)
+	case "dlq":
+		listDLQ(args)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)
 		os.Exit(1)

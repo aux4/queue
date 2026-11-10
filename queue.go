@@ -25,6 +25,19 @@ type Queue struct {
 	wsStop     chan struct{}
 	webhookURL string
 	webhookHeaders http.Header
+
+	// Work-queue mode (opt-in per queue at creation time via create --workQueue
+	// true). A work-queue queue never fans out through Publish/consumers -- its
+	// messages live in the FIFO backlog below and are only delivered through
+	// lease/ack/nack, exactly once at a time (per message, and per group when a
+	// message has one). Pre-existing pub/sub queues are never affected: this
+	// field defaults to false and every new field below is only read when it is
+	// true.
+	workQueue   bool
+	maxAttempts int
+	msgCounter  atomic.Uint64
+	backlog     []*workMessage
+	dlq         []*workMessage
 }
 
 func NewQueue(name string) *Queue {
@@ -318,4 +331,148 @@ func parseHeaders(headers []string) http.Header {
 		}
 	}
 	return h
+}
+
+// workMessage is one message in a work-queue's FIFO backlog.
+type workMessage struct {
+	id          string
+	body        []byte
+	group       string
+	attempts    int
+	createdAt   time.Time
+	leaseID     string
+	leaseExpiry time.Time
+}
+
+// ConfigureWorkQueue opts a queue into work-queue mode: ack/nack/lease
+// semantics instead of pub/sub fan-out. maxAttempts <= 0 means unlimited
+// attempts (never moved to the dead-letter queue by nack).
+func (q *Queue) ConfigureWorkQueue(workQueue bool, maxAttempts int) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.workQueue = workQueue
+	q.maxAttempts = maxAttempts
+}
+
+// IsWorkQueue reports whether this queue was created with --workQueue true.
+func (q *Queue) IsWorkQueue() bool {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return q.workQueue
+}
+
+// EnqueueWork appends a message to the FIFO backlog. id defaults to an
+// internally generated id when empty; group is optional (empty = no group
+// serialization for this message).
+func (q *Queue) EnqueueWork(body []byte, id, group string) string {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if id == "" {
+		id = fmt.Sprintf("msg-%d", q.msgCounter.Add(1))
+	}
+	q.backlog = append(q.backlog, &workMessage{
+		id:        id,
+		body:      body,
+		group:     group,
+		createdAt: time.Now(),
+	})
+	return id
+}
+
+// siblingGroupLeased reports whether any message OTHER than the one at index
+// skip, sharing the given group, is currently under a live (unexpired)
+// lease. Must be called with q.mu held.
+func (q *Queue) siblingGroupLeased(group string, skip int, now time.Time) bool {
+	if group == "" {
+		return false
+	}
+	for i, m := range q.backlog {
+		if i == skip {
+			continue
+		}
+		if m.group == group && m.leaseID != "" && m.leaseExpiry.After(now) {
+			return true
+		}
+	}
+	return false
+}
+
+// Lease picks the oldest eligible message in the backlog (not under a live
+// lease, and -- when the message has a group -- no sibling in the same group
+// is under a live lease either), assigns it a new lease (visibility
+// timeout), and returns a copy. Returns ok=false when nothing is eligible.
+func (q *Queue) Lease(visibility time.Duration) (workMessage, string, bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	now := time.Now()
+	for i, m := range q.backlog {
+		if m.leaseID != "" && m.leaseExpiry.After(now) {
+			continue // already leased, not yet expired
+		}
+		if q.siblingGroupLeased(m.group, i, now) {
+			continue // a sibling in the same group is actively leased
+		}
+		leaseID := fmt.Sprintf("lease-%d", q.counter.Add(1))
+		m.leaseID = leaseID
+		m.leaseExpiry = now.Add(visibility)
+		return *m, leaseID, true
+	}
+	return workMessage{}, "", false
+}
+
+// Ack removes a message from the backlog once its lease matches. Returns
+// false when the leaseId does not match any current message (already
+// acked/nacked-to-dlq, or never existed).
+func (q *Queue) Ack(leaseID string) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for i, m := range q.backlog {
+		if m.leaseID == leaseID {
+			q.backlog = append(q.backlog[:i], q.backlog[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// Nack releases a message for immediate redelivery and increments its
+// attempts counter. Once attempts reaches the queue's maxAttempts (when
+// configured > 0), the message is moved to the dead-letter queue instead of
+// staying eligible. Returns (found, movedToDLQ).
+func (q *Queue) Nack(leaseID string) (bool, bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for i, m := range q.backlog {
+		if m.leaseID == leaseID {
+			m.attempts++
+			m.leaseID = ""
+			m.leaseExpiry = time.Time{}
+			if q.maxAttempts > 0 && m.attempts >= q.maxAttempts {
+				q.backlog = append(q.backlog[:i], q.backlog[i+1:]...)
+				q.dlq = append(q.dlq, m)
+				return true, true
+			}
+			return true, false
+		}
+	}
+	return false, false
+}
+
+// DLQ returns a snapshot of the dead-letter queue.
+func (q *Queue) DLQ() []workMessage {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	out := make([]workMessage, len(q.dlq))
+	for i, m := range q.dlq {
+		out[i] = *m
+	}
+	return out
+}
+
+// BacklogDepth returns the number of messages currently in the FIFO backlog
+// (leased or not).
+func (q *Queue) BacklogDepth() int {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return len(q.backlog)
 }

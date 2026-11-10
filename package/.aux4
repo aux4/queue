@@ -1,14 +1,17 @@
 {
   "scope": "aux4",
   "name": "queue",
-  "version": "0.1.2",
-  "description": "in-memory message queue with pub/sub support",
+  "version": "0.2.0",
+  "description": "in-memory message queue with pub/sub support, plus a durable work-queue mode",
   "license": "Apache-2.0",
   "tags": [
     "aux4",
     "queue",
     "pubsub",
     "messaging"
+  ],
+  "dependencies": [
+    "aux4/repository"
   ],
   "profiles": [
     {
@@ -20,7 +23,7 @@
             "profile:queue"
           ],
           "help": {
-            "text": "in-memory message queue"
+            "text": "in-memory message queue with pub/sub support, plus a durable work-queue mode"
           }
         }
       ]
@@ -31,24 +34,38 @@
         {
           "name": "start",
           "execute": [
-            "${packageDir}/aux4-queue start values(port, token, queues)"
+            "if [ \"${storage}\" = \"repository\" ]; then echo \"repository storage ready (db=${db}); no server process needed\"; else ${packageDir}/aux4-queue start values(port, token, queues); fi"
           ],
           "help": {
-            "text": "Start the queue server",
+            "text": "Start the queue server (memory storage) or validate repository storage is reachable (no server process)",
             "variables": [
               {
+                "name": "storage",
+                "text": "Storage backend: memory (default, volatile, in-process pub/sub + work queues) or repository (durable, every command talks to the database directly, no server process)",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
                 "name": "port",
-                "text": "Server port",
+                "text": "Server port (memory storage only)",
                 "default": "8420"
               },
               {
                 "name": "token",
-                "text": "Authentication token",
+                "text": "Authentication token (memory storage only)",
                 "default": ""
               },
               {
                 "name": "queues",
-                "text": "Pre-configured queues (JSON array)",
+                "text": "Pre-configured queues (JSON array, memory storage only)",
                 "default": ""
               }
             ]
@@ -57,11 +74,20 @@
         {
           "name": "stop",
           "execute": [
-            "${packageDir}/aux4-queue stop values(port)"
+            "if [ \"${storage}\" = \"repository\" ]; then echo \"repository storage: nothing to stop\"; else ${packageDir}/aux4-queue stop values(port); fi"
           ],
           "help": {
-            "text": "Stop the queue server",
+            "text": "Stop the queue server (memory storage only; a no-op for repository storage)",
             "variables": [
+              {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
               {
                 "name": "port",
                 "text": "Server port",
@@ -73,19 +99,34 @@
         {
           "name": "create",
           "execute": [
-            "${packageDir}/aux4-queue create values(port, token, name, ws, webhook, header*)"
+            "set:createData={\"workQueue\":${workQueue},\"maxAttempts\":${maxAttempts}}",
+            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository write _queues --db \"${db}\" --id \"${name}\" --data value(createData); else ${packageDir}/aux4-queue create values(port, token, name, ws, webhook, header*, workQueue, maxAttempts); fi"
           ],
           "help": {
-            "text": "Create a new queue",
+            "text": "Create a new queue. In repository storage, every queue is implicitly a durable work queue (there is no pub/sub concept without a server process)",
             "variables": [
               {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
                 "name": "port",
-                "text": "Server port",
+                "text": "Server port (memory storage only)",
                 "default": "8420"
               },
               {
                 "name": "token",
-                "text": "Authentication token",
+                "text": "Authentication token (memory storage only)",
                 "default": ""
               },
               {
@@ -95,19 +136,29 @@
               },
               {
                 "name": "ws",
-                "text": "WebSocket URL to proxy messages to",
+                "text": "WebSocket URL to proxy messages to (memory storage, pub/sub mode only)",
                 "default": ""
               },
               {
                 "name": "webhook",
-                "text": "Webhook URL to proxy messages to",
+                "text": "Webhook URL to proxy messages to (memory storage, pub/sub mode only)",
                 "default": ""
               },
               {
                 "name": "header",
-                "text": "HTTP header for WS/webhook (format: Key: Value)",
+                "text": "HTTP header for WS/webhook (format: Key: Value) (memory storage, pub/sub mode only)",
                 "default": "",
                 "multiple": true
+              },
+              {
+                "name": "workQueue",
+                "text": "Opt this queue into work-queue semantics (ack/nack/lease) instead of pub/sub fan-out (memory storage only; always true in repository storage)",
+                "default": "false"
+              },
+              {
+                "name": "maxAttempts",
+                "text": "Maximum delivery attempts before a message is moved to the dead-letter queue. 0 (default) means unlimited",
+                "default": "0"
               }
             ]
           }
@@ -115,19 +166,33 @@
         {
           "name": "delete",
           "execute": [
-            "${packageDir}/aux4-queue delete values(port, token, name)"
+            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository drop ${name}_messages --db \"${db}\" --yes true && aux4 repository delete _queues --db \"${db}\" --id \"${name}\"; else ${packageDir}/aux4-queue delete values(port, token, name); fi"
           ],
           "help": {
             "text": "Delete a queue",
             "variables": [
               {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
                 "name": "port",
-                "text": "Server port",
+                "text": "Server port (memory storage only)",
                 "default": "8420"
               },
               {
                 "name": "token",
-                "text": "Authentication token",
+                "text": "Authentication token (memory storage only)",
                 "default": ""
               },
               {
@@ -141,19 +206,33 @@
         {
           "name": "list",
           "execute": [
-            "${packageDir}/aux4-queue list values(port, token)"
+            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository find _queues --db \"${db}\" --expr \"1=1\"; else ${packageDir}/aux4-queue list values(port, token); fi"
           ],
           "help": {
             "text": "List all queues",
             "variables": [
               {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
                 "name": "port",
-                "text": "Server port",
+                "text": "Server port (memory storage only)",
                 "default": "8420"
               },
               {
                 "name": "token",
-                "text": "Authentication token",
+                "text": "Authentication token (memory storage only)",
                 "default": ""
               }
             ]
@@ -162,24 +241,48 @@
         {
           "name": "send",
           "execute": [
-            "stdin:${packageDir}/aux4-queue send values(port, token, name)"
+            "stdin:if [ \"${storage}\" = \"repository\" ]; then BODY=$(cat) && aux4 repository write ${name}_messages --db \"${db}\" --data \"{\\\"body\\\":$BODY,\\\"group\\\":\\\"${group}\\\",\\\"attempts\\\":0}\"; else ${packageDir}/aux4-queue send values(port, token, name, group, id); fi"
           ],
           "help": {
             "text": "Send messages to a queue from stdin",
             "variables": [
               {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
                 "name": "port",
-                "text": "Server port",
+                "text": "Server port (memory storage only)",
                 "default": "8420"
               },
               {
                 "name": "token",
-                "text": "Authentication token",
+                "text": "Authentication token (memory storage only)",
                 "default": ""
               },
               {
                 "name": "name",
                 "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "group",
+                "text": "Group key for one-at-a-time (per group) delivery, e.g. a chatId. Only meaningful on a work queue",
+                "default": ""
+              },
+              {
+                "name": "id",
+                "text": "Message id (memory storage, work-queue mode only; auto-generated when empty)",
                 "default": ""
               }
             ]
@@ -191,7 +294,7 @@
             "${packageDir}/aux4-queue receive values(port, token, name, limit)"
           ],
           "help": {
-            "text": "Receive messages from a queue",
+            "text": "Receive messages from a pub/sub queue (memory storage only; streams until --limit messages arrive or the connection closes). For a work queue, use 'queue lease' + 'queue ack'/'queue nack' instead",
             "variables": [
               {
                 "name": "port",
@@ -212,6 +315,218 @@
                 "name": "limit",
                 "text": "Max messages to receive (-1 for unlimited)",
                 "default": "-1"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lease",
+          "execute": [
+            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository lease ${name}_messages --db \"${db}\" --expr \"${maxAttempts} <= 0 or attempts < ${maxAttempts}\" --group group --ttl \"${visibility}\" --owner \"${owner}\" --raw false; else ${packageDir}/aux4-queue lease values(port, token, name, visibility); fi"
+          ],
+          "help": {
+            "text": "Lease the next eligible message from a work queue (visibility-timeout based; one message per group at a time when the message has a group)",
+            "variables": [
+              {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
+                "name": "port",
+                "text": "Server port (memory storage only)",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token (memory storage only)",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "visibility",
+                "text": "Visibility timeout in seconds: how long this lease is held before it expires on its own and becomes eligible again",
+                "default": "30"
+              },
+              {
+                "name": "owner",
+                "text": "Opaque identifier of the leasing caller (repository storage only)",
+                "default": ""
+              },
+              {
+                "name": "maxAttempts",
+                "text": "Exclude messages that have already reached this many attempts (repository storage only; 0 means unlimited, as set on 'queue create')",
+                "default": "0"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ack",
+          "execute": [
+            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository delete ${name}_messages --db \"${db}\" --id \"${id}\"; else ${packageDir}/aux4-queue ack values(port, token, name, leaseId); fi"
+          ],
+          "help": {
+            "text": "Acknowledge (complete) a leased message, removing it from the queue",
+            "variables": [
+              {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
+                "name": "port",
+                "text": "Server port (memory storage only)",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token (memory storage only)",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "leaseId",
+                "text": "The leaseId returned by 'queue lease' (memory storage only)",
+                "default": ""
+              },
+              {
+                "name": "id",
+                "text": "The message id returned by 'queue lease' (repository storage only)",
+                "default": ""
+              }
+            ]
+          }
+        },
+        {
+          "name": "nack",
+          "execute": [
+            "set:newAttempts=!echo $((${attempts} + 1))",
+            "set:nackData={\"attempts\":${newAttempts},\"leaseExpiresAt\":0}",
+            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository patch ${name}_messages --db \"${db}\" --id \"${id}\" --data value(nackData); else ${packageDir}/aux4-queue nack values(port, token, name, leaseId); fi"
+          ],
+          "help": {
+            "text": "Release a leased message for immediate redelivery, incrementing its attempts; the message becomes a dead-letter (visible via 'queue dlq', no longer leasable) once maxAttempts is reached",
+            "variables": [
+              {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
+                "name": "port",
+                "text": "Server port (memory storage only)",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token (memory storage only)",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "leaseId",
+                "text": "The leaseId returned by 'queue lease' (memory storage only)",
+                "default": ""
+              },
+              {
+                "name": "id",
+                "text": "The message id returned by 'queue lease' (repository storage only)",
+                "default": ""
+              },
+              {
+                "name": "attempts",
+                "text": "The message's current attempts count, as returned by 'queue lease' (repository storage only)",
+                "default": "0"
+              },
+              {
+                "name": "maxAttempts",
+                "text": "The queue's maxAttempts, as set on 'queue create' (repository storage only; 0 means unlimited; only used to decide whether the message is now dead-lettered)",
+                "default": "0"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dlq",
+          "execute": [
+            "if [ \"${storage}\" = \"repository\" ]; then aux4 repository find ${name}_messages --db \"${db}\" --expr \"${maxAttempts} > 0 and attempts >= ${maxAttempts}\"; else ${packageDir}/aux4-queue dlq values(port, token, name); fi"
+          ],
+          "help": {
+            "text": "List the dead-letter messages for a work queue",
+            "variables": [
+              {
+                "name": "storage",
+                "text": "Storage backend: memory or repository",
+                "default": "memory",
+                "options": [
+                  "memory",
+                  "repository"
+                ]
+              },
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL, only used when --storage repository",
+                "default": ".queue.db"
+              },
+              {
+                "name": "port",
+                "text": "Server port (memory storage only)",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token (memory storage only)",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "maxAttempts",
+                "text": "The queue's maxAttempts, as set on 'queue create' (repository storage only; 0 means unlimited)",
+                "default": "0"
               }
             ]
           }

@@ -69,6 +69,8 @@ func createQueue(args []string) {
 	wsURL := getArg(args, 3, "")
 	webhookURL := getArg(args, 4, "")
 	headerCSV := getArg(args, 5, "")
+	workQueue := getArg(args, 6, "")
+	maxAttempts := getArg(args, 7, "")
 
 	if name == "" {
 		fmt.Fprintln(os.Stderr, "queue name is required")
@@ -90,6 +92,12 @@ func createQueue(args []string) {
 				u += "&header=" + url.QueryEscape(h)
 			}
 		}
+	}
+	if workQueue == "true" {
+		u += "&workQueue=true"
+	}
+	if maxAttempts != "" {
+		u += "&maxAttempts=" + url.QueryEscape(maxAttempts)
 	}
 
 	resp, err := http.Post(u, "application/json", nil)
@@ -155,6 +163,8 @@ func sendMessages(args []string) {
 	port := getArg(args, 0, "8420")
 	token := getArg(args, 1, "")
 	name := getArg(args, 2, "")
+	group := getArg(args, 3, "")
+	id := getArg(args, 4, "")
 
 	if name == "" {
 		fmt.Fprintln(os.Stderr, "queue name is required")
@@ -162,6 +172,12 @@ func sendMessages(args []string) {
 	}
 
 	endpoint := buildURL(port, "/send", token, name)
+	if group != "" {
+		endpoint += "&group=" + url.QueryEscape(group)
+	}
+	if id != "" {
+		endpoint += "&id=" + url.QueryEscape(id)
+	}
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
 
@@ -248,4 +264,135 @@ func receiveMessages(args []string) {
 		fmt.Fprintf(os.Stderr, "connection error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// leaseMessage leases the next eligible message from a work queue.
+// args: port, token, name, visibility, group (reserved for future per-call
+// narrowing; the server currently decides group eligibility per message).
+func leaseMessage(args []string) {
+	port := getArg(args, 0, "8420")
+	token := getArg(args, 1, "")
+	name := getArg(args, 2, "")
+	visibility := getArg(args, 3, "")
+
+	if name == "" {
+		fmt.Fprintln(os.Stderr, "queue name is required")
+		os.Exit(1)
+	}
+	if visibility == "" {
+		fmt.Fprintln(os.Stderr, "visibility (seconds) is required")
+		os.Exit(1)
+	}
+
+	u := buildURL(port, "/lease", token, name)
+	u += "&visibility=" + url.QueryEscape(visibility)
+
+	resp, err := http.Post(u, "application/json", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == http.StatusNotFound {
+		fmt.Fprintln(os.Stdout, "{}")
+		os.Exit(4)
+	}
+	if resp.StatusCode >= 400 {
+		fmt.Fprintf(os.Stderr, "%s\n", body)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stdout, "%s", body)
+}
+
+// ackMessage acknowledges (completes) a leased message.
+// args: port, token, name, leaseId
+func ackMessage(args []string) {
+	port := getArg(args, 0, "8420")
+	token := getArg(args, 1, "")
+	name := getArg(args, 2, "")
+	leaseID := getArg(args, 3, "")
+
+	if name == "" || leaseID == "" {
+		fmt.Fprintln(os.Stderr, "queue name and leaseId are required")
+		os.Exit(1)
+	}
+
+	u := buildURL(port, "/ack", token, name)
+	u += "&leaseId=" + url.QueryEscape(leaseID)
+
+	resp, err := http.Post(u, "application/json", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		fmt.Fprintf(os.Stderr, "%s\n", body)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stdout, "%s", body)
+}
+
+// nackMessage releases a leased message for immediate redelivery, bumping
+// its attempts counter (and moving it to the dead-letter queue once
+// maxAttempts is reached).
+// args: port, token, name, leaseId
+func nackMessage(args []string) {
+	port := getArg(args, 0, "8420")
+	token := getArg(args, 1, "")
+	name := getArg(args, 2, "")
+	leaseID := getArg(args, 3, "")
+
+	if name == "" || leaseID == "" {
+		fmt.Fprintln(os.Stderr, "queue name and leaseId are required")
+		os.Exit(1)
+	}
+
+	u := buildURL(port, "/nack", token, name)
+	u += "&leaseId=" + url.QueryEscape(leaseID)
+
+	resp, err := http.Post(u, "application/json", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		fmt.Fprintf(os.Stderr, "%s\n", body)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stdout, "%s", body)
+}
+
+// listDLQ lists the dead-letter messages for a work queue.
+// args: port, token, name
+func listDLQ(args []string) {
+	port := getArg(args, 0, "8420")
+	token := getArg(args, 1, "")
+	name := getArg(args, 2, "")
+
+	if name == "" {
+		fmt.Fprintln(os.Stderr, "queue name is required")
+		os.Exit(1)
+	}
+
+	resp, err := http.Get(buildURL(port, "/dlq", token, name))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		fmt.Fprintf(os.Stderr, "%s\n", body)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stdout, "%s", body)
 }

@@ -40,3 +40,15 @@ aux4 queue create --name logs --ws wss://stream.example.com/logs
 ```text
 {"name":"logs","status":"CREATED"}
 ```
+
+#### Work queue mode
+
+Pass `--workQueue true` to opt this queue into ack/nack/lease semantics instead of pub/sub fan-out
+(memory storage only — a queue created with `--storage repository` is always a work queue, there is
+no pub/sub concept without a server process). `--maxAttempts` caps delivery attempts before a
+message is dead-lettered (`0`, the default, means unlimited).
+
+```bash
+aux4 queue create --name jobs --workQueue true --maxAttempts 5
+aux4 queue create --storage repository --db .queue.db --name jobs --maxAttempts 5
+```

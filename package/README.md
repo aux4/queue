@@ -98,6 +98,99 @@ aux4 queue start --queues '[
 ]'
 ```
 
+## Work queue mode
+
+By default, `aux4 queue` is a pub/sub fan-out broker: every connected `receive` gets every message,
+nothing is retried, and nothing survives a restart. **Work queue mode** adds the semantics a real
+job/task queue needs on top of the same package: a message is delivered to exactly one consumer at a
+time, failures are retried with a visibility timeout, repeated failures land in a dead-letter queue,
+and messages for the same logical conversation (e.g. a chat) are always processed one at a time.
+
+Work queue mode is opt-in per queue (`--workQueue true` at `create` time) and never changes how an
+existing pub/sub queue behaves — `send`/`receive`/`create`/`delete`/`list` are untouched for queues
+that don't opt in.
+
+### Storage: memory vs repository
+
+```bash
+aux4 queue start --storage memory      # default
+aux4 queue start --storage repository --db .queue.db
+```
+
+| | `--storage memory` (default) | `--storage repository` |
+|---|---|---|
+| Durability | Volatile — lost on restart | Durable — every message is a row in a SQLite (or Turso/libSQL) database |
+| Process | A long-running `queue start` server; every command is a network round trip to it | No server process at all; every command (`send`/`lease`/`ack`/`nack`) opens the database directly |
+| Latency | Fast — in-process memory | One `aux4 repository` subprocess + a database round trip per operation |
+| Best for | High-throughput, short-lived jobs where losing the queue on a crash is acceptable | Jobs that must survive a crash/restart, or need to be inspected/queried as data (e.g. a chatbot's inbound message backlog) |
+
+Pick `memory` when speed matters more than surviving a restart; pick `repository` when the queue
+itself needs to be durable. `--storage`/`--db` are accepted on every work-queue command
+(`create`, `delete`, `list`, `send`, `lease`, `ack`, `nack`, `dlq`) — pick the same storage/db for
+every call against a given queue.
+
+### Create a work queue
+
+```bash
+aux4 queue create --name jobs --workQueue true --maxAttempts 5
+aux4 queue create --storage repository --db .queue.db --name jobs --maxAttempts 5
+```
+
+`--maxAttempts` caps how many times a message is redelivered before it is dead-lettered (`0`, the
+default, means unlimited retries).
+
+### Send, lease, ack, nack
+
+```bash
+echo '{"task":"build"}' | aux4 queue send --name jobs
+echo '{"task":"reply"}' | aux4 queue send --name jobs --group chat-42   # same group = one at a time
+```
+
+```bash
+aux4 queue lease --name jobs --visibility 30
+# {"id":"msg-1","leaseId":"lease-1","group":"","attempts":0,"body":{"task":"build"}}
+```
+
+`lease` returns the next eligible message (oldest first) and holds it under a visibility timeout:
+while the lease is active, no other `lease` call can pick up the same message, and — when the
+message has a `--group` — no sibling in the same group either. If nothing is eligible, `lease`
+prints `{}` (memory) or `[]` (repository) and exits non-zero.
+
+```bash
+aux4 queue ack --name jobs --leaseId lease-1     # done — remove it
+aux4 queue nack --name jobs --leaseId lease-1    # failed — redeliver now, bump attempts
+```
+
+`nack` releases the message for immediate redelivery and increments its attempts counter. Once
+`maxAttempts` is reached, the message stops being eligible for `lease` and shows up in `aux4 queue
+dlq` instead.
+
+```bash
+aux4 queue dlq --name jobs | jq .
+```
+
+### Group key: one-at-a-time delivery per conversation
+
+Pass `--group <key>` on `send` to serialize delivery of everything sharing that key — the classic
+use case is a chatbot that must finish replying to one message in a conversation before starting the
+next one, even though many conversations are processed concurrently:
+
+```bash
+echo '{"text":"hi"}'  | aux4 queue send --name inbox --group chat-42
+echo '{"text":"bye"}' | aux4 queue send --name inbox --group chat-42
+```
+
+A `lease` call will only ever return one `chat-42` message at a time; the second stays ineligible
+until the first is acked (or its lease expires).
+
+### Repository storage: the underlying database
+
+In `--storage repository`, each queue's messages live in a `<name>_messages` table managed by
+`aux4/repository`, and the queue registry itself lives in a `_queues` table — both are visible to
+`aux4 repository find`/`read` for inspection like any other repository data. There is no separate
+dead-letter table: a dead-lettered message is simply a message whose `attempts` has reached
+`maxAttempts`, which `aux4 queue dlq`/`lease` account for via `--maxAttempts`.
+
 ## Authentication
 
 Pass `--token` to `start` to require authentication. All clients must then include the same `--token`.
