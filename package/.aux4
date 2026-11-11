@@ -1,7 +1,7 @@
 {
   "scope": "aux4",
   "name": "queue",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "in-memory message queue with pub/sub support, plus a durable work-queue mode",
   "license": "Apache-2.0",
   "tags": [
@@ -562,9 +562,21 @@
           "help": {
             "text": "memory storage: start the server",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" },
-              { "name": "queues", "text": "Pre-configured queues (JSON array)", "default": "" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "queues",
+                "text": "Pre-configured queues (JSON array)",
+                "default": ""
+              }
             ]
           }
         },
@@ -577,7 +589,11 @@
           "help": {
             "text": "memory storage: stop the server",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              }
             ]
           }
         },
@@ -590,14 +606,47 @@
           "help": {
             "text": "memory storage: create a queue",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "ws", "text": "WebSocket URL to proxy messages to", "default": "" },
-              { "name": "webhook", "text": "Webhook URL to proxy messages to", "default": "" },
-              { "name": "header", "text": "HTTP header for WS/webhook", "default": "", "multiple": true },
-              { "name": "workQueue", "text": "Opt this queue into work-queue semantics", "default": "false" },
-              { "name": "maxAttempts", "text": "Maximum delivery attempts before dead-lettering", "default": "0" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "ws",
+                "text": "WebSocket URL to proxy messages to",
+                "default": ""
+              },
+              {
+                "name": "webhook",
+                "text": "Webhook URL to proxy messages to",
+                "default": ""
+              },
+              {
+                "name": "header",
+                "text": "HTTP header for WS/webhook",
+                "default": "",
+                "multiple": true
+              },
+              {
+                "name": "workQueue",
+                "text": "Opt this queue into work-queue semantics",
+                "default": "false"
+              },
+              {
+                "name": "maxAttempts",
+                "text": "Maximum delivery attempts before dead-lettering",
+                "default": "0"
+              }
             ]
           }
         },
@@ -610,9 +659,21 @@
           "help": {
             "text": "memory storage: delete a queue",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" },
-              { "name": "name", "text": "Queue name", "default": "" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              }
             ]
           }
         },
@@ -625,8 +686,16 @@
           "help": {
             "text": "memory storage: list queues",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              }
             ]
           }
         },
@@ -639,11 +708,31 @@
           "help": {
             "text": "memory storage: send a message",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "group", "text": "Group key for one-at-a-time delivery", "default": "" },
-              { "name": "id", "text": "Message id", "default": "" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "group",
+                "text": "Group key for one-at-a-time delivery",
+                "default": ""
+              },
+              {
+                "name": "id",
+                "text": "Message id",
+                "default": ""
+              }
             ]
           }
         },
@@ -656,10 +745,26 @@
           "help": {
             "text": "memory storage: lease a message",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "visibility", "text": "Visibility timeout in seconds", "default": "30" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "visibility",
+                "text": "Visibility timeout in seconds",
+                "default": "30"
+              }
             ]
           }
         },
@@ -672,10 +777,26 @@
           "help": {
             "text": "memory storage: ack a message",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "leaseId", "text": "The leaseId returned by 'queue lease'", "default": "" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "leaseId",
+                "text": "The leaseId returned by 'queue lease'",
+                "default": ""
+              }
             ]
           }
         },
@@ -688,10 +809,26 @@
           "help": {
             "text": "memory storage: nack a message",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "leaseId", "text": "The leaseId returned by 'queue lease'", "default": "" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "leaseId",
+                "text": "The leaseId returned by 'queue lease'",
+                "default": ""
+              }
             ]
           }
         },
@@ -704,9 +841,21 @@
           "help": {
             "text": "memory storage: list dead letters",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8420" },
-              { "name": "token", "text": "Authentication token", "default": "" },
-              { "name": "name", "text": "Queue name", "default": "" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8420"
+              },
+              {
+                "name": "token",
+                "text": "Authentication token",
+                "default": ""
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              }
             ]
           }
         }
@@ -724,7 +873,11 @@
           "help": {
             "text": "repository storage: validate readiness (no server process)",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              }
             ]
           }
         },
@@ -748,10 +901,26 @@
           "help": {
             "text": "repository storage: create a queue record",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "workQueue", "text": "Opt this queue into work-queue semantics", "default": "false" },
-              { "name": "maxAttempts", "text": "Maximum delivery attempts before dead-lettering", "default": "0" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "workQueue",
+                "text": "Opt this queue into work-queue semantics",
+                "default": "false"
+              },
+              {
+                "name": "maxAttempts",
+                "text": "Maximum delivery attempts before dead-lettering",
+                "default": "0"
+              }
             ]
           }
         },
@@ -765,8 +934,16 @@
           "help": {
             "text": "repository storage: delete a queue's messages table and its record",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
-              { "name": "name", "text": "Queue name", "default": "" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              }
             ]
           }
         },
@@ -779,7 +956,11 @@
           "help": {
             "text": "repository storage: list queue records",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              }
             ]
           }
         },
@@ -794,9 +975,21 @@
           "help": {
             "text": "repository storage: write a message record, wrapping the stdin payload as its body",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "group", "text": "Group key for one-at-a-time delivery", "default": "" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "group",
+                "text": "Group key for one-at-a-time delivery",
+                "default": ""
+              }
             ]
           }
         },
@@ -810,11 +1003,31 @@
           "help": {
             "text": "repository storage: lease the next eligible message",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "visibility", "text": "Visibility timeout in seconds", "default": "30" },
-              { "name": "owner", "text": "Opaque identifier of the leasing caller", "default": "" },
-              { "name": "maxAttempts", "text": "Exclude messages that already reached this many attempts", "default": "0" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "visibility",
+                "text": "Visibility timeout in seconds",
+                "default": "30"
+              },
+              {
+                "name": "owner",
+                "text": "Opaque identifier of the leasing caller",
+                "default": ""
+              },
+              {
+                "name": "maxAttempts",
+                "text": "Exclude messages that already reached this many attempts",
+                "default": "0"
+              }
             ]
           }
         },
@@ -827,9 +1040,21 @@
           "help": {
             "text": "repository storage: delete a completed message",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "id", "text": "The message id returned by 'queue lease'", "default": "" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "id",
+                "text": "The message id returned by 'queue lease'",
+                "default": ""
+              }
             ]
           }
         },
@@ -842,9 +1067,21 @@
           "help": {
             "text": "repository storage: release a leased message and bump attempts (server-side increment, no shell arithmetic)",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "id", "text": "The message id returned by 'queue lease'", "default": "" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "id",
+                "text": "The message id returned by 'queue lease'",
+                "default": ""
+              }
             ]
           }
         },
@@ -858,9 +1095,21 @@
           "help": {
             "text": "repository storage: list dead-letter messages",
             "variables": [
-              { "name": "db", "text": "Database path or libsql:// URL", "default": ".queue.db" },
-              { "name": "name", "text": "Queue name", "default": "" },
-              { "name": "maxAttempts", "text": "The queue's maxAttempts", "default": "0" }
+              {
+                "name": "db",
+                "text": "Database path or libsql:// URL",
+                "default": ".queue.db"
+              },
+              {
+                "name": "name",
+                "text": "Queue name",
+                "default": ""
+              },
+              {
+                "name": "maxAttempts",
+                "text": "The queue's maxAttempts",
+                "default": "0"
+              }
             ]
           }
         }
