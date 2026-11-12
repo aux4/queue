@@ -110,14 +110,14 @@ Work queue mode is opt-in per queue (`--workQueue true` at `create` time) and ne
 existing pub/sub queue behaves — `send`/`receive`/`create`/`delete`/`list` are untouched for queues
 that don't opt in.
 
-### Storage: memory vs repository
+### Provider: memory, repository, or a plugin
 
 ```bash
-aux4 queue start --storage memory      # default
-aux4 queue start --storage repository --db .queue.db
+aux4 queue start --provider memory      # default
+aux4 queue start --provider repository --db .queue.db
 ```
 
-| | `--storage memory` (default) | `--storage repository` |
+| | `--provider memory` (default) | `--provider repository` |
 |---|---|---|
 | Durability | Volatile — lost on restart | Durable — every message is a row in a SQLite (or Turso/libSQL) database |
 | Process | A long-running `queue start` server; every command is a network round trip to it | No server process at all; every command (`send`/`lease`/`ack`/`nack`) opens the database directly |
@@ -125,9 +125,16 @@ aux4 queue start --storage repository --db .queue.db
 | Best for | High-throughput, short-lived jobs where losing the queue on a crash is acceptable | Jobs that must survive a crash/restart, or need to be inspected/queried as data (e.g. a chatbot's inbound message backlog) |
 
 Pick `memory` when speed matters more than surviving a restart; pick `repository` when the queue
-itself needs to be durable. `--storage`/`--db` are accepted on every work-queue command
-(`create`, `delete`, `list`, `send`, `lease`, `ack`, `nack`, `dlq`) — pick the same storage/db for
-every call against a given queue.
+itself needs to be durable. `--provider`/`--db` are accepted on every work-queue command
+(`create`, `delete`, `list`, `send`, `lease`, `ack`, `nack`, `renew`, `dlq`) — pick the same
+provider/db for every call against a given queue.
+
+`memory` and `repository` ship with this package. Additional providers are separate plugin
+packages that add themselves to `--provider` once installed — e.g.
+[aux4/queue-sqs](https://hub.aux4.io/r/public/packages/aux4/queue-sqs) adds `--provider sqs`
+(Amazon SQS). An unknown or not-installed provider fails with a clear
+`install aux4/queue-<provider>` error instead of a generic "command not found". The older
+`--storage` flag still works everywhere as a backward-compatible alias for `--provider`.
 
 ### Create a work queue
 

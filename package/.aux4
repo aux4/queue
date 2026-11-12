@@ -54,19 +54,30 @@
         {
           "name": "start",
           "execute": [
-            "aux4 queue value(storage) start param(port) param(token) param(queues) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) start param(port) param(token) param(queues) param(db)"
           ],
           "help": {
             "text": "Start the queue server (memory storage) or validate repository storage is reachable (no server process)",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory (default, volatile, in-process pub/sub + work queues) or repository (durable, every command talks to the database directly, no server process)",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -94,19 +105,30 @@
         {
           "name": "stop",
           "execute": [
-            "aux4 queue value(storage) stop param(port)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) stop param(port)"
           ],
           "help": {
             "text": "Stop the queue server (memory storage only; a no-op for repository storage)",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "port",
@@ -119,19 +141,30 @@
         {
           "name": "create",
           "execute": [
-            "aux4 queue value(storage) create param(port) param(token) param(name) param(ws) param(webhook) param(header**) param(workQueue) param(maxAttempts) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) create param(port) param(token) param(name) param(ws) param(webhook) param(header**) param(workQueue) param(maxAttempts) param(db)"
           ],
           "help": {
             "text": "Create a new queue. In repository storage, every queue is implicitly a durable work queue (there is no pub/sub concept without a server process)",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -185,19 +218,30 @@
         {
           "name": "delete",
           "execute": [
-            "aux4 queue value(storage) delete param(port) param(token) param(name) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) delete param(port) param(token) param(name) param(db)"
           ],
           "help": {
             "text": "Delete a queue",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -225,19 +269,30 @@
         {
           "name": "list",
           "execute": [
-            "aux4 queue value(storage) list param(port) param(token) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) list param(port) param(token) param(db)"
           ],
           "help": {
             "text": "List all queues",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -260,19 +315,30 @@
         {
           "name": "send",
           "execute": [
-            "stdin:aux4 queue value(storage) send param(port) param(token) param(name) param(group) param(id) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "stdin:aux4 queue value(provider) send param(port) param(token) param(name) param(group) param(id) param(db)"
           ],
           "help": {
             "text": "Send messages to a queue from stdin",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -341,19 +407,30 @@
         {
           "name": "lease",
           "execute": [
-            "aux4 queue value(storage) lease param(port) param(token) param(name) param(visibility) param(owner) param(maxAttempts) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) lease param(port) param(token) param(name) param(visibility) param(owner) param(maxAttempts) param(db)"
           ],
           "help": {
             "text": "Lease the next eligible message from a work queue (visibility-timeout based; one message per group at a time when the message has a group)",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -396,19 +473,30 @@
         {
           "name": "renew",
           "execute": [
-            "aux4 queue value(storage) renew param(port) param(token) param(name) param(leaseId) param(id) param(visibility) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) renew param(port) param(token) param(name) param(leaseId) param(id) param(visibility) param(db)"
           ],
           "help": {
             "text": "Extend a still-live lease to a new visibility timeout, counted from now -- a heartbeat for a caller still processing a message that expects to run longer than the original visibility timeout",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -451,19 +539,30 @@
         {
           "name": "ack",
           "execute": [
-            "aux4 queue value(storage) ack param(port) param(token) param(name) param(leaseId) param(id) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) ack param(port) param(token) param(name) param(leaseId) param(id) param(db)"
           ],
           "help": {
             "text": "Acknowledge (complete) a leased message, removing it from the queue",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -501,19 +600,30 @@
         {
           "name": "nack",
           "execute": [
-            "aux4 queue value(storage) nack param(port) param(token) param(name) param(leaseId) param(id) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) nack param(port) param(token) param(name) param(leaseId) param(id) param(db)"
           ],
           "help": {
             "text": "Release a leased message for immediate redelivery, incrementing its attempts; the message becomes a dead-letter (visible via 'queue dlq', no longer leasable) once maxAttempts is reached",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
@@ -561,19 +671,30 @@
         {
           "name": "dlq",
           "execute": [
-            "aux4 queue value(storage) dlq param(port) param(token) param(name) param(maxAttempts) param(db)"
+            "set:provider=nvl(storage, provider)",
+            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
+            "set:providerOk=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "aux4 queue value(provider) dlq param(port) param(token) param(name) param(maxAttempts) param(db)"
           ],
           "help": {
             "text": "List the dead-letter messages for a work queue",
             "variables": [
               {
-                "name": "storage",
-                "text": "Storage backend: memory or repository",
+                "name": "provider",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
-                  "repository"
+                  "repository",
+                  "sqs",
+                  "cloud"
                 ]
+              },
+              {
+                "name": "storage",
+                "text": "Deprecated alias for --provider, kept for backward compatibility. --provider takes precedence when both are given",
+                "default": ""
               },
               {
                 "name": "db",
