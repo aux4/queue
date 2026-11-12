@@ -1,3 +1,41 @@
+# aux4/queue 0.2.3
+
+## Added
+
+- `renew --leaseId/--id --visibility`: extends a still-live lease to a new visibility timeout,
+  counted from now — a heartbeat for a caller still processing a message that expects to run longer
+  than the lease's original visibility. Only ever extends a lease that is still live; a lease that
+  already expired (and may have been picked up by a different `lease` call) is not resurrected,
+  same empty-result convention as `lease` (`{}`/`[]`, non-zero exit). Works in both `--storage
+  memory` (new `Queue.Renew`/`/renew` route) and `--storage repository` (new `aux4/repository renew`
+  primitive, pinned `aux4/repository@>=1.3.9`).
+- A work queue with `--webhook` configured now pushes each message through the same lease/ack/nack
+  machinery a pull consumer would use, instead of the plain pub/sub fire-and-forget proxy: a 2xx
+  response acks the message, anything else (non-2xx status or a timeout/connection error) nacks it —
+  redelivered with attempts incremented, eventually dead-lettered once `maxAttempts` is reached. A
+  **non-work** queue's `--webhook` is unaffected (still fire-and-forget pub/sub), since it never
+  holds a lease.
+
+## Fixed
+
+- `--storage repository` queue names may now contain a dash or a dot (`bot-inbox`, `bot.inbox`) —
+  both common and both already fine under `--storage memory` — instead of failing with a SQL syntax
+  error. An underscore-only name still maps to exactly the same `<name>_messages` table it always
+  has (no migration needed); any other name is sanitized into a safe identifier and disambiguated
+  with a short hash of the original name, so two different names can never collide on the same
+  table.
+
+## Changed
+
+- `package/.aux4`: the remaining inline shell `if [ ... ]; then ... fi` storage dispatch (one per
+  public command) is now a single literal dispatch line (`aux4 queue value(storage) <cmd> ...`,
+  already injection-safe via `value()`) with no shell conditional at all — an unknown `--storage`
+  value simply resolves to a nonexistent subcommand ("Command not found") instead of a custom error
+  message. `aux4 lint run --strict true` is clean; no behavior change for a valid `--storage`.
+
+12 new tests (`queue__renew.test.md`, `queue__webhook-workqueue.test.md`,
+`queue__dashed-names.test.md`); all 36 previously-shipped tests pass unmodified (48/48 total).
+
 # aux4/queue 0.2.2
 
 ## Changed

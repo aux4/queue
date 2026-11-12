@@ -223,6 +223,38 @@ func startServer(args []string) {
 		})
 	})
 
+	mux.HandleFunc("/renew", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			httpError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		if !manager.ValidateToken(r.URL.Query().Get("token")) {
+			httpError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		name := r.URL.Query().Get("name")
+		leaseID := r.URL.Query().Get("leaseId")
+		if name == "" || leaseID == "" {
+			httpError(w, http.StatusBadRequest, "name and leaseId are required")
+			return
+		}
+		visibilitySeconds, err := strconv.Atoi(r.URL.Query().Get("visibility"))
+		if err != nil || visibilitySeconds <= 0 {
+			httpError(w, http.StatusBadRequest, "visibility (seconds) is required and must be > 0")
+			return
+		}
+		q, err := manager.Get(name)
+		if err != nil {
+			httpError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		if !q.Renew(leaseID, time.Duration(visibilitySeconds)*time.Second) {
+			httpError(w, http.StatusNotFound, "leaseId not found or already expired")
+			return
+		}
+		httpJSON(w, http.StatusOK, map[string]string{"status": "RENEWED"})
+	})
+
 	mux.HandleFunc("/ack", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			httpError(w, http.StatusMethodNotAllowed, "method not allowed")

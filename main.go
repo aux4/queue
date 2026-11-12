@@ -31,12 +31,16 @@ func main() {
 		receiveMessages(args)
 	case "lease":
 		leaseMessage(args)
+	case "renew":
+		renewMessage(args)
 	case "ack":
 		ackMessage(args)
 	case "nack":
 		nackMessage(args)
 	case "dlq":
 		listDLQ(args)
+	case "table-name":
+		tableName(args)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)
 		os.Exit(1)

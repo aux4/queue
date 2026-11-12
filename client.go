@@ -306,6 +306,50 @@ func leaseMessage(args []string) {
 	fmt.Fprintf(os.Stdout, "%s", body)
 }
 
+// renewMessage extends a still-live lease to a new visibility timeout,
+// counted from now -- a heartbeat for a caller that is still processing a
+// leased message and expects to run longer than the original visibility
+// timeout.
+// args: port, token, name, leaseId, visibility
+func renewMessage(args []string) {
+	port := getArg(args, 0, "8420")
+	token := getArg(args, 1, "")
+	name := getArg(args, 2, "")
+	leaseID := getArg(args, 3, "")
+	visibility := getArg(args, 4, "")
+
+	if name == "" || leaseID == "" {
+		fmt.Fprintln(os.Stderr, "queue name and leaseId are required")
+		os.Exit(1)
+	}
+	if visibility == "" {
+		fmt.Fprintln(os.Stderr, "visibility (seconds) is required")
+		os.Exit(1)
+	}
+
+	u := buildURL(port, "/renew", token, name)
+	u += "&leaseId=" + url.QueryEscape(leaseID)
+	u += "&visibility=" + url.QueryEscape(visibility)
+
+	resp, err := http.Post(u, "application/json", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == http.StatusNotFound {
+		fmt.Fprintln(os.Stdout, "{}")
+		os.Exit(4)
+	}
+	if resp.StatusCode >= 400 {
+		fmt.Fprintf(os.Stderr, "%s\n", body)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stdout, "%s", body)
+}
+
 // ackMessage acknowledges (completes) a leased message.
 // args: port, token, name, leaseId
 func ackMessage(args []string) {

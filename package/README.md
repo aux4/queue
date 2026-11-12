@@ -169,6 +169,32 @@ dlq` instead.
 aux4 queue dlq --name jobs | jq .
 ```
 
+### Renewing a lease for a slow consumer
+
+A consumer that is still processing a message and expects to run longer than its original
+`--visibility` can extend the lease in place with `renew` — a heartbeat, so it is not redelivered to
+a second consumer while the first is still working on it:
+
+```bash
+LEASE=$(aux4 queue lease --name jobs --visibility 30)
+LEASE_ID=$(echo "$LEASE" | jq -r '.leaseId')
+# ... still working ...
+aux4 queue renew --name jobs --leaseId "$LEASE_ID" --visibility 30
+```
+
+`renew` only extends a lease that is still live. If it already expired — and especially if the
+message has since been leased by someone else — `renew` fails instead of resurrecting it (`{}` /
+`[]`, non-zero exit, same convention as `lease`). In `--storage repository`, identify the message
+with `--id` (the id `lease` returned) instead of `--leaseId`.
+
+### Pushing to a webhook is retry-safe on a work queue
+
+A queue that is both a work queue and has `--webhook` configured (see [create](#create-a-work-queue))
+pushes each message through lease/ack/nack instead of the plain pub/sub fire-and-forget proxy: a 2xx
+response acks it, anything else (non-2xx or a timeout) nacks it, so a failed delivery is retried and
+eventually dead-lettered — never silently dropped. A **non-work** queue's `--webhook` is unaffected
+(still fire-and-forget), since it never holds a lease.
+
 ### Group key: one-at-a-time delivery per conversation
 
 Pass `--group <key>` on `send` to serialize delivery of everything sharing that key — the classic
@@ -190,6 +216,12 @@ In `--storage repository`, each queue's messages live in a `<name>_messages` tab
 `aux4 repository find`/`read` for inspection like any other repository data. There is no separate
 dead-letter table: a dead-lettered message is simply a message whose `attempts` has reached
 `maxAttempts`, which `aux4 queue dlq`/`lease` account for via `--maxAttempts`.
+
+Any queue name is accepted, including one with dashes or dots (`bot-inbox`, `bot.inbox`). An
+underscore-only name maps to its messages table unchanged (`bot_inbox` → `bot_inbox_messages`,
+exactly as before); any other name is sanitized into a safe table identifier and disambiguated with
+a short hash of the original name, so it works end to end and two different names are never mapped
+to the same table even if they sanitize to the same text.
 
 ## Authentication
 

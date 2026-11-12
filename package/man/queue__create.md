@@ -52,3 +52,30 @@ message is dead-lettered (`0`, the default, means unlimited).
 aux4 queue create --name jobs --workQueue true --maxAttempts 5
 aux4 queue create --storage repository --db .queue.db --name jobs --maxAttempts 5
 ```
+
+#### Webhook push on a work queue is retry-safe
+
+When a queue is both a work queue (`--workQueue true`, or any `--storage repository` queue) *and*
+has `--webhook` configured, each message is pushed through the same lease/ack/nack machinery a pull
+consumer (`queue lease` + `queue ack`/`queue nack`) would use, instead of the plain pub/sub
+fire-and-forget proxy: a 2xx response from the webhook acks the message, and anything else — a
+non-2xx status or a timeout/connection error — nacks it, so the message is redelivered (attempts
+incremented) and eventually reaches the dead-letter queue once `--maxAttempts` is exhausted, exactly
+as if a pull consumer had nacked it. A **non-work queue's** `--webhook` stays the original
+fire-and-forget pub/sub proxy — unaffected by this, since it never holds a lease at all.
+
+```bash
+aux4 queue create --name jobs --workQueue true --maxAttempts 3 --webhook https://api.example.com/ingest
+```
+
+A delivery that returns 500 (or times out) is retried automatically; after 3 failed attempts the
+message shows up in `aux4 queue dlq --name jobs` instead of being silently dropped.
+
+#### Queue names under `--storage repository`
+
+Any name is accepted, including one with dashes or dots (`bot-inbox`, `bot.inbox`) — both common and
+both already fine under `--storage memory`. Internally, `--storage repository` maps the name to a
+SQL table identifier for its messages: an underscore-only name maps unchanged (`bot_inbox` stays
+`bot_inbox_messages`, exactly as before); any other name is sanitized and disambiguated with a short
+hash of the original name, so it works end to end and two different names never collide on the same
+table even if they sanitize to the same text.
