@@ -58,5 +58,11 @@ aux4 queue renew --storage repository --db .queue.db --name jobs --id "$ID" --vi
 3f1a...
 ```
 
+`renew` is a hot-path command — unlike `create`/`send`/`lease`/`list`/`dlq`, it does not probe for
+whether `--provider`/`--storage` is installed, so an unknown provider here falls through to aux4's
+own generic "command not found" instead of the friendly `install aux4/queue-<provider>` message
+(the provider was already proven to exist by the time there is a lease to renew). This also keeps
+`renew` cheap for a frequent lease-heartbeat, since every provider-existence probe spawns a process.
+
 Related commands: `aux4 queue lease` to acquire the lease in the first place, `aux4 queue ack` to
 complete it, `aux4 queue nack` to release it for immediate redelivery.

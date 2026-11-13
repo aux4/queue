@@ -92,3 +92,19 @@ aux4 queue renew --storage repository --db .renew.queue.db --name renewq --id "$
 ````error:regex
 ^(\[\]|)$
 ````
+
+## hot-path dispatch has no install-check probe
+
+`renew` (and `ack`/`nack`) no longer probe whether `--provider` is installed before dispatching --
+an unknown provider falls straight through to aux4's own generic error, not the friendly
+`install aux4/queue-<provider>` message that `create`/`send`/`lease`/`list`/`dlq` still show.
+
+### renew with an unknown provider fails with aux4's generic error, not the friendly install message
+
+````execute
+aux4 queue renew --provider bogus --name renewq --leaseId x --visibility 5
+````
+
+````error:partial
+Command not found*?
+````
