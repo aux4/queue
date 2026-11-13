@@ -218,3 +218,29 @@ aux4 queue delete --name legacy --port 18430
 ````error:partial
 *?is not a work queue*?
 ````
+
+## hot-path dispatch has no install-check probe
+
+`ack`/`nack` (like `renew`) skip the provider-install-check probe that `create`/`send`/`lease`/
+`list`/`dlq` still run -- an unknown provider falls straight through to aux4's own generic error
+instead of the friendly `install aux4/queue-<provider>` message.
+
+### ack with an unknown provider fails with aux4's generic error, not the friendly install message
+
+````execute
+aux4 queue ack --provider bogus --name wq1 --leaseId x
+````
+
+````error:partial
+Command not found*?
+````
+
+### nack with an unknown provider fails with aux4's generic error, not the friendly install message
+
+````execute
+aux4 queue nack --provider bogus --name wq1 --leaseId x
+````
+
+````error:partial
+Command not found*?
+````

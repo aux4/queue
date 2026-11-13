@@ -1,3 +1,22 @@
+# aux4/queue 0.2.5
+
+## Changed
+
+- `renew`, `ack` and `nack` no longer run the `--provider`/`--storage` install-check probe
+  (`aux4 queue <provider> --help`) that `create`/`send`/`lease`/`list`/`dlq` still run before
+  dispatching. These three are the hot path of an active lease (hit once per lease-renew heartbeat
+  interval, potentially every few seconds, under `aux4/bot`'s `work --mode pull`) and the provider
+  has already been proven to exist by the time there is a lease to renew/ack/nack. An unknown
+  `--provider` on these three now falls straight through to aux4's own generic "command not found"
+  instead of the friendly `install aux4/queue-<provider>` message — the first real fix for a renew
+  heartbeat occasionally missing its window on a short `--visibility` under load (each renew used to
+  spawn an extra `--help` probe process before the real renew call).
+
+2 new tests (`queue__renew.test.md`, `queue__workqueue.test.md`); all 53 previously-shipped tests
+pass unmodified (55/56 total — the one pre-existing failure, `queue__provider.test.md`'s reserved
+`cloud` provider check, is a stale local `aux4/queue-cloud` install on the test machine, unrelated
+to this change).
+
 # aux4/queue 0.2.3
 
 ## Added

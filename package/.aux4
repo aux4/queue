@@ -474,9 +474,6 @@
           "name": "renew",
           "execute": [
             "set:provider=nvl(storage, provider)",
-            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
-            "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) renew param(port) param(token) param(name) param(leaseId) param(id) param(visibility) param(db)"
           ],
           "help": {
@@ -540,9 +537,6 @@
           "name": "ack",
           "execute": [
             "set:provider=nvl(storage, provider)",
-            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
-            "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) ack param(port) param(token) param(name) param(leaseId) param(id) param(db)"
           ],
           "help": {
@@ -601,9 +595,6 @@
           "name": "nack",
           "execute": [
             "set:provider=nvl(storage, provider)",
-            "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
-            "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) nack param(port) param(token) param(name) param(leaseId) param(id) param(db)"
           ],
           "help": {

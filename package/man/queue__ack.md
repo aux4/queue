@@ -29,5 +29,10 @@ aux4 queue ack --name jobs --leaseId "$LEASE_ID"
 {"status":"ACKED"}
 ```
 
+`ack` is a hot-path command — unlike `create`/`send`/`lease`/`list`/`dlq`, it does not probe for
+whether `--provider`/`--storage` is installed, so an unknown provider here falls through to aux4's
+own generic "command not found" instead of the friendly `install aux4/queue-<provider>` message
+(the provider was already proven to exist by the time there is a lease to ack).
+
 Related commands: `aux4 queue lease` to obtain a leaseId/id, `aux4 queue nack` to retry instead of
 completing.

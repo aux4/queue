@@ -44,5 +44,10 @@ Once the queue's `maxAttempts` is reached, the same call instead reports:
 {"status":"DEAD_LETTERED"}
 ```
 
+`nack` is a hot-path command — unlike `create`/`send`/`lease`/`list`/`dlq`, it does not probe for
+whether `--provider`/`--storage` is installed, so an unknown provider here falls through to aux4's
+own generic "command not found" instead of the friendly `install aux4/queue-<provider>` message
+(the provider was already proven to exist by the time there is a lease to nack).
+
 Related commands: `aux4 queue lease` to obtain a leaseId/id, `aux4 queue ack` to complete instead of
 retrying, `aux4 queue dlq` to inspect dead-lettered messages.

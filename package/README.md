@@ -132,8 +132,12 @@ provider/db for every call against a given queue.
 `memory` and `repository` ship with this package. Additional providers are separate plugin
 packages that add themselves to `--provider` once installed — e.g.
 [aux4/queue-sqs](https://hub.aux4.io/r/public/packages/aux4/queue-sqs) adds `--provider sqs`
-(Amazon SQS). An unknown or not-installed provider fails with a clear
-`install aux4/queue-<provider>` error instead of a generic "command not found". The older
+(Amazon SQS). On `create`, `send`, `lease`, `list` and `dlq`, an unknown or not-installed provider
+fails with a clear `install aux4/queue-<provider>` error instead of a generic "command not found".
+**Note:** `renew`, `ack` and `nack` are the hot path of an active lease — they skip this friendly
+check (every check would spawn an extra process) and fall straight through to aux4's own generic
+"command not found" for an unknown/missing provider there. By the time a caller has a lease to
+renew/ack/nack, the provider has already been proven to exist at `create`/`lease` time. The older
 `--storage` flag still works everywhere as a backward-compatible alias for `--provider`.
 
 ### Create a work queue
