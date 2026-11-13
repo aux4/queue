@@ -57,7 +57,9 @@
             "set:provider=nvl(storage, provider)",
             "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
             "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "nout:test value(provider) = cloud && echo 'cloud-queue' || echo 'queue-'value(provider)",
+            "set:pkgHint=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/'value(pkgHint)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) start param(port) param(token) param(queues) param(db)"
           ],
           "help": {
@@ -65,7 +67,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -108,7 +110,9 @@
             "set:provider=nvl(storage, provider)",
             "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
             "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "nout:test value(provider) = cloud && echo 'cloud-queue' || echo 'queue-'value(provider)",
+            "set:pkgHint=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/'value(pkgHint)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) stop param(port)"
           ],
           "help": {
@@ -116,7 +120,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -144,7 +148,9 @@
             "set:provider=nvl(storage, provider)",
             "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
             "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "nout:test value(provider) = cloud && echo 'cloud-queue' || echo 'queue-'value(provider)",
+            "set:pkgHint=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/'value(pkgHint)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) create param(port) param(token) param(name) param(ws) param(webhook) param(header**) param(workQueue) param(maxAttempts) param(db)"
           ],
           "help": {
@@ -152,7 +158,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -221,7 +227,9 @@
             "set:provider=nvl(storage, provider)",
             "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
             "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "nout:test value(provider) = cloud && echo 'cloud-queue' || echo 'queue-'value(provider)",
+            "set:pkgHint=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/'value(pkgHint)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) delete param(port) param(token) param(name) param(db)"
           ],
           "help": {
@@ -229,7 +237,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -272,7 +280,9 @@
             "set:provider=nvl(storage, provider)",
             "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
             "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "nout:test value(provider) = cloud && echo 'cloud-queue' || echo 'queue-'value(provider)",
+            "set:pkgHint=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/'value(pkgHint)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) list param(port) param(token) param(db)"
           ],
           "help": {
@@ -280,7 +290,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -318,7 +328,9 @@
             "set:provider=nvl(storage, provider)",
             "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
             "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "nout:test value(provider) = cloud && echo 'cloud-queue' || echo 'queue-'value(provider)",
+            "set:pkgHint=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/'value(pkgHint)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "stdin:aux4 queue value(provider) send param(port) param(token) param(name) param(group) param(id) param(db)"
           ],
           "help": {
@@ -326,7 +338,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -410,7 +422,9 @@
             "set:provider=nvl(storage, provider)",
             "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
             "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "nout:test value(provider) = cloud && echo 'cloud-queue' || echo 'queue-'value(provider)",
+            "set:pkgHint=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/'value(pkgHint)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) lease param(port) param(token) param(name) param(visibility) param(owner) param(maxAttempts) param(db)"
           ],
           "help": {
@@ -418,7 +432,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -481,7 +495,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -544,7 +558,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -602,7 +616,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",
@@ -665,7 +679,9 @@
             "set:provider=nvl(storage, provider)",
             "nout:aux4 queue value(provider) --help > /dev/null 2>&1; echo $?",
             "set:providerOk=${response}",
-            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-'value(provider)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
+            "nout:test value(provider) = cloud && echo 'cloud-queue' || echo 'queue-'value(provider)",
+            "set:pkgHint=${response}",
+            "if(providerOk!=0) && echo 'Error: queue provider 'value(provider)' is not installed or unknown. Run: aux4 aux4 pkger install aux4/'value(pkgHint)' (or use --provider memory|repository|sqs).' >&2 && exit 1 || true",
             "aux4 queue value(provider) dlq param(port) param(token) param(name) param(maxAttempts) param(db)"
           ],
           "help": {
@@ -673,7 +689,7 @@
             "variables": [
               {
                 "name": "provider",
-                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/queue-cloud) fail with an 'install aux4/queue-<provider>' error",
+                "text": "Queue provider: memory (default, volatile, in-process pub/sub + work queues), repository (durable, every command talks to the database directly, no server process), or sqs (durable, delegates to Amazon SQS via the aux4/queue-sqs plugin). Unknown or not-installed providers (including the reserved 'cloud' provider from aux4/cloud-queue) fail with an 'install aux4/queue-<provider>' error",
                 "default": "memory",
                 "options": [
                   "memory",

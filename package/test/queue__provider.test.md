@@ -60,5 +60,5 @@ aux4 queue list --provider cloud
 ````
 
 ````error:partial
-Error: queue provider cloud is not installed or unknown. Run: aux4 aux4 pkger install aux4/queue-cloud *?
+Error: queue provider cloud is not installed or unknown. Run: aux4 aux4 pkger install aux4/cloud-queue *?
 ````

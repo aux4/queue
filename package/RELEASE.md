@@ -1,3 +1,12 @@
+# aux4/queue 0.2.6 (unreleased)
+
+## Changed
+
+- The reserved `cloud` provider's "not installed" install hint now points at `aux4/cloud-queue`
+  (not `aux4/queue-cloud`, which was renamed to match the aux4 `cloud-` prefix convention used by
+  `aux4/cloud-file-sync` and `aux4/cloud-state-provider`). Every other provider keeps the existing
+  `aux4/queue-<provider>` hint (e.g. `aux4/queue-sqs`) unchanged.
+
 # aux4/queue 0.2.5
 
 ## Changed
