@@ -38,3 +38,16 @@ queue server started on port 8420 (token required)
 ```bash
 aux4 queue start --queues '[{"name":"events","webhook":"https://api.example.com/ingest","header":["Authorization: Bearer tok123"]},{"name":"logs","ws":"wss://stream.example.com/logs"}]'
 ```
+
+#### Storage backends
+
+`--storage memory` (default) runs the server above. `--storage repository --db <path|libsql://...>`
+switches to durable storage: no server process is started at all (every work-queue command talks
+directly to the database), so `start` only validates and prints readiness, and `stop` is a no-op.
+
+```bash
+aux4 queue start --storage repository --db .queue.db
+```
+```text
+repository storage ready (db=.queue.db); no server process needed
+```

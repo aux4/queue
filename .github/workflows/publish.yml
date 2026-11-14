@@ -1,9 +1,16 @@
 name: Publish Package
 
+# main -> prod hub (token minted from AUX4_PUBLISHER_* client credentials against
+#         prod SSO; default registry)
+# dev  -> dev hub  (token minted from AUX4_DEV_PUBLISHER_* client credentials
+#         against dev SSO, since the dev hub validates against dev SSO; registry
+#         pointed at the dev hub). Both paths call aux4/action@v1 command:publish;
+#         only the token + registry differ.
 on:
   push:
     branches:
       - main
+      - dev
     paths:
       - '**'
       - '!.github/**'
@@ -24,72 +31,73 @@ on:
           - major
 
 concurrency:
-  group: publish-package
+  group: publish-package-${{ github.ref_name }}
   cancel-in-progress: false
 
 permissions:
   contents: write
 
+# pkger (used internally by aux4/action's install/test/publish steps) resolves
+# package dependencies against this registry; empty = pkger's prod default.
+env:
+  AUX4_REGISTRY_URL: ${{ github.ref_name == 'dev' && 'https://dev.api.hub.aux4.io/v1/packages' || '' }}
+
 jobs:
-  test-linux:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: aux4/action@v1
+        with:
+          command: lint
+          strict: 'true'
+
+  test-linux:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.23'
 
-      - name: Test
-        uses: aux4/test-package-action@v1
+      - uses: aux4/action@v1
         with:
+          command: test
           build_command: aux4 builder linux
 
   test-darwin:
+    needs: [lint]
     runs-on: macos-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.23'
 
-      - name: Test
-        uses: aux4/test-package-action@v1
+      - uses: aux4/action@v1
         with:
+          command: test
           build_command: aux4 builder darwin
 
   publish:
     needs: [test-linux, test-darwin]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.23'
 
-      - name: Build
-        run: |
-          GOOS=darwin GOARCH=amd64 go build -o package/dist/darwin/amd64/aux4-queue .
-          GOOS=darwin GOARCH=arm64 go build -o package/dist/darwin/arm64/aux4-queue .
-          GOOS=linux GOARCH=amd64 go build -o package/dist/linux/amd64/aux4-queue .
-          GOOS=linux GOARCH=arm64 go build -o package/dist/linux/arm64/aux4-queue .
-          GOOS=linux GOARCH=386 go build -o package/dist/linux/386/aux4-queue .
-          GOOS=windows GOARCH=amd64 go build -o package/dist/windows/amd64/aux4-queue.exe .
-          GOOS=windows GOARCH=arm64 go build -o package/dist/windows/arm64/aux4-queue.exe .
-          GOOS=windows GOARCH=386 go build -o package/dist/windows/386/aux4-queue.exe .
-
-      - name: Mint hub publish token
+      - name: Mint prod hub publish token
         id: mint
+        if: github.ref_name == 'main'
         env:
           CLIENT_ID: ${{ secrets.AUX4_PUBLISHER_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.AUX4_PUBLISHER_CLIENT_SECRET }}
@@ -98,11 +106,30 @@ jobs:
           TOK=$(curl -sf -u "$CLIENT_ID:$CLIENT_SECRET" -d grant_type=client_credentials https://sso.aux4.io/token | jq -r '.access_token // empty')
           if [ -z "$TOK" ]; then echo "::error::client_credentials mint returned no access_token"; exit 1; fi
           echo "::add-mask::$TOK"; echo "token=$TOK" >> "$GITHUB_OUTPUT"
-      - name: Publish package
-        uses: aux4/publish-package-action@v1
+
+      # The dev hub is validated by dev SSO, so a prod token is rejected there.
+      # Mint a short-lived dev publish token from the dev publisher client
+      # credentials. Only runs on the dev branch.
+      - name: Mint dev hub publish token
+        id: devmint
+        if: github.ref_name == 'dev'
+        env:
+          CLIENT_ID: ${{ secrets.AUX4_DEV_PUBLISHER_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.AUX4_DEV_PUBLISHER_CLIENT_SECRET }}
+        run: |
+          if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then echo "::error::dev publisher client id/secret not set"; exit 1; fi
+          TOK=$(curl -sf -u "$CLIENT_ID:$CLIENT_SECRET" -d grant_type=client_credentials https://dev.sso.aux4.io/token | jq -r '.access_token // empty')
+          if [ -z "$TOK" ]; then echo "::error::client_credentials mint returned no access_token from dev SSO"; exit 1; fi
+          echo "::add-mask::$TOK"; echo "token=$TOK" >> "$GITHUB_OUTPUT"
+
+      - name: Publish
+        uses: aux4/action@v1
         with:
-          working_directory: package
-          package_directory: .
+          command: publish
           level: ${{ inputs.level || 'patch' }}
-          aux4_token: ${{ steps.mint.outputs.token }}
+          build_command: aux4 builder all
+          # dev -> minted dev token; main -> minted prod token
+          aux4_token: ${{ github.ref_name == 'dev' && steps.devmint.outputs.token || steps.mint.outputs.token }}
+          # dev -> dev hub registry; main -> default (prod) hub
+          registry: ${{ github.ref_name == 'dev' && 'https://dev.api.hub.aux4.io/v1/packages' || '' }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
